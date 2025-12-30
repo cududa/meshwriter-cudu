@@ -10,7 +10,13 @@ import {
     isObject, isArray, isNumber, isBoolean,
     isRelativeLength, round, weeid
 } from './utils.js';
-import earcut from 'earcut';
+import earcutModule from 'earcut';
+
+/** @typedef {import('@babylonjs/core/scene').Scene} Scene */
+/** @typedef {import('@babylonjs/core/Materials/material').Material} Material */
+
+// Handle both CJS default export and ESM module export
+const earcut = earcutModule.default || earcutModule;
 
 // Constants
 const naturalLetterHeight = 1000;
@@ -58,6 +64,12 @@ function merge(arrayOfMeshes) {
 }
 
 /**
+ * @typedef {Object} LetterPolygonsResult
+ * @property {number} xWidth - Total width of all letters
+ * @property {number} count - Number of valid letter meshes
+ */
+
+/**
  * Construct meshes for all letters in a string
  * @param {string} letters - Text string
  * @param {Object} fontSpec - Font specification
@@ -69,7 +81,7 @@ function merge(arrayOfMeshes) {
  * @param {Material} material - Material (unused in this function)
  * @param {string} meshOrigin - "letterCenter" or "fontOrigin"
  * @param {Scene} scene - Babylon scene
- * @returns {Array} - [meshes, boxes, origins] with xWidth and count properties
+ * @returns {any[] & LetterPolygonsResult} - [meshes, boxes, origins] with xWidth and count properties
  */
 export function constructLetterPolygons(
     letters, fontSpec, xOffset, yOffset, zOffset,
@@ -110,7 +122,8 @@ export function constructLetterPolygons(
         }
     }
 
-    const meshesAndBoxes = [lettersMeshes, lettersBoxes, lettersOrigins];
+    /** @type {any[] & LetterPolygonsResult} */
+    const meshesAndBoxes = /** @type {any} */ ([lettersMeshes, lettersBoxes, lettersOrigins]);
     meshesAndBoxes.xWidth = round(letterOffsetX);
     meshesAndBoxes.count = ix;
     return meshesAndBoxes;
@@ -168,6 +181,7 @@ function buildLetterMeshes(
     function makeCmdsToMesh(reverse) {
         return function cmdsToMesh(cmdsList) {
             let cmd = getCmd(cmdsList, 0);
+            /** @type {any} */
             const path = new Path2(adjXfix(cmd[0]), adjZfix(cmd[1]));
 
             // Process path commands

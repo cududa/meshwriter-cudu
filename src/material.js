@@ -6,6 +6,8 @@
 import { StandardMaterial, Color3 } from './babylonImports.js';
 import { weeid } from './utils.js';
 
+/** @typedef {import('@babylonjs/core/scene').Scene} Scene */
+
 const floor = Math.floor;
 
 /**

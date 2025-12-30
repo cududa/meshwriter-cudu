@@ -1,10 +1,23 @@
 # The ubiquitous DS_Store files from Apple OS
 .DS_Store
 
-# This one
-r.js
+# Dependencies
 node_modules
+
+# Build output
+dist/
+
+# Old/unused files
+r.js
 .npmignore
 oldfontfiles
 READMECSG.md
 build.type.js
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*

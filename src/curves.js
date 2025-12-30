@@ -5,6 +5,13 @@
 
 import { Path2, Curve3, Vector3 } from './babylonImports.js';
 
+/**
+ * Extended Path2 interface with MeshWriter curve methods
+ * @typedef {Object} Path2Extensions
+ * @property {(redX: number, redY: number, blueX: number, blueY: number) => Path2} addQuadraticCurveTo
+ * @property {(redX: number, redY: number, greenX: number, greenY: number, blueX: number, blueY: number) => Path2} addCubicCurveTo
+ */
+
 // Optimized segment count for curves
 // Native Babylon 6+ uses 36 segments which causes slowdown
 // MeshWriter uses 6 for better performance
@@ -19,8 +26,11 @@ export function installCurveExtensions() {
         return;
     }
 
+    /** @type {any} */
+    const proto = Path2.prototype;
+
     // Quadratic Bezier with optimized segment count
-    Path2.prototype.addQuadraticCurveTo = function(redX, redY, blueX, blueY) {
+    proto.addQuadraticCurveTo = function(redX, redY, blueX, blueY) {
         const points = this.getPoints();
         const lastPoint = points[points.length - 1];
         const origin = new Vector3(lastPoint.x, lastPoint.y, 0);
@@ -37,7 +47,7 @@ export function installCurveExtensions() {
     };
 
     // Cubic Bezier with optimized segment count
-    Path2.prototype.addCubicCurveTo = function(redX, redY, greenX, greenY, blueX, blueY) {
+    proto.addCubicCurveTo = function(redX, redY, greenX, greenY, blueX, blueY) {
         const points = this.getPoints();
         const lastPoint = points[points.length - 1];
         const origin = new Vector3(lastPoint.x, lastPoint.y, 0);

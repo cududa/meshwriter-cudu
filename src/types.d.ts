@@ -1,176 +1,266 @@
 /**
  * MeshWriter Type Declarations
- * Provides type information for TypeScript users and IDE support
+ * Provides TypeScript types for MeshWriter library
+ *
+ * Requires: @babylonjs/core (peer dependency)
  */
 
-// Babylon.js types (simplified - users should install @babylonjs/core for full types)
-declare module '@babylonjs/core/Maths/math.vector' {
-    export class Vector2 {
-        x: number;
-        y: number;
-        constructor(x: number, y: number);
-    }
-    export class Vector3 {
-        x: number;
-        y: number;
-        z: number;
-        constructor(x: number, y: number, z: number);
-    }
+import type { Scene } from '@babylonjs/core/scene';
+import type { Mesh } from '@babylonjs/core/Meshes/mesh';
+import type { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import type { SolidParticleSystem } from '@babylonjs/core/Particles/solidParticleSystem';
+import type { Vector2 } from '@babylonjs/core/Maths/math.vector';
+
+// ============ Options & Configuration Types ============
+
+/** Position configuration for text placement */
+export interface MeshWriterPosition {
+    x?: number;
+    y?: number;
+    z?: number;
 }
 
-declare module '@babylonjs/core/Maths/math.color' {
-    export class Color3 {
-        r: number;
-        g: number;
-        b: number;
-        constructor(r: number, g: number, b: number);
-    }
+/** Color configuration for material properties */
+export interface MeshWriterColors {
+    diffuse?: string;
+    specular?: string;
+    ambient?: string;
+    emissive?: string;
 }
 
-declare module '@babylonjs/core/Maths/math.path' {
-    import { Vector3 } from '@babylonjs/core/Maths/math.vector';
-
-    export class Path2 {
-        constructor(x: number, y: number);
-        addLineTo(x: number, y: number): Path2;
-        addQuadraticCurveTo(redX: number, redY: number, blueX: number, blueY: number): Path2;
-        addCubicCurveTo(redX: number, redY: number, greenX: number, greenY: number, blueX: number, blueY: number): Path2;
-        getPoints(): Array<{ x: number; y: number }>;
-    }
-
-    // Allow prototype extension
-    export interface Path2 {
-        addQuadraticCurveTo(redX: number, redY: number, blueX: number, blueY: number): Path2;
-        addCubicCurveTo(redX: number, redY: number, greenX: number, greenY: number, blueX: number, blueY: number): Path2;
-    }
-
-    export class Curve3 {
-        static CreateQuadraticBezier(origin: Vector3, control: Vector3, destination: Vector3, segments: number): Curve3;
-        static CreateCubicBezier(origin: Vector3, control1: Vector3, control2: Vector3, destination: Vector3, segments: number): Curve3;
-        getPoints(): Vector3[];
-    }
-}
-
-declare module '@babylonjs/core/Meshes/mesh' {
-    export class Mesh {
-        position: { x: number; y: number; z: number };
-        material: any;
-        static MergeMeshes(meshes: Mesh[], disposeSource?: boolean): Mesh;
-        dispose(): void;
-        flipFaces(): void;
-        refreshBoundingInfo(): void;
-        getBoundingInfo(): any;
-        rotation: { x: number; y: number; z: number };
-    }
-}
-
-declare module '@babylonjs/core/Meshes/polygonMesh' {
-    import { Vector2 } from '@babylonjs/core/Maths/math.vector';
-    export class PolygonMeshBuilder {
-        constructor(name: string, contours: Vector2[], scene: any, earcut?: any);
-        build(updatable?: boolean, depth?: number): any;
-    }
-}
-
-declare module '@babylonjs/core/Materials/standardMaterial' {
-    import { Color3 } from '@babylonjs/core/Maths/math.color';
-    export class StandardMaterial {
-        constructor(name: string, scene: any);
-        diffuseColor: Color3;
-        specularColor: Color3;
-        ambientColor: Color3;
-        emissiveColor: Color3;
-        alpha: number;
-    }
-}
-
-declare module '@babylonjs/core/Particles/solidParticleSystem' {
-    export class SolidParticleSystem {
-        constructor(name: string, scene: any, options?: any);
-        addShape(mesh: any, count: number, options?: any): number;
-        buildMesh(): any;
-        setParticles(): void;
-        dispose(): void;
-        particles: any[];
-    }
-}
-
-declare module '@babylonjs/core/Meshes/csg' {
-    export class CSG {
-        static FromMesh(mesh: any): CSG;
-        subtract(other: CSG): CSG;
-        toMesh(name: string, material: any, scene: any): any;
-    }
-}
-
-declare module '@babylonjs/core/Meshes/csg2' {
-    export class CSG2 {
-        static FromMesh(mesh: any): CSG2;
-        subtract(other: CSG2): CSG2;
-        toMesh(name: string, scene: any, options?: { centerMesh?: boolean }): any;
-    }
-    export function InitializeCSG2Async(): Promise<void>;
-    export function IsCSG2Ready(): boolean;
-}
-
-// Earcut module
-declare module 'earcut' {
-    function earcut(vertices: number[], holes?: number[], dim?: number): number[];
-    export default earcut;
-}
-
-// MeshWriter types
+/** Options for creating text with MeshWriter */
 export interface MeshWriterOptions {
-    position?: { x?: number; y?: number; z?: number };
-    colors?: {
-        diffuse?: string;
-        specular?: string;
-        ambient?: string;
-        emissive?: string;
-    };
+    /** Position of the text in 3D space */
+    position?: MeshWriterPosition;
+    /** Material color properties */
+    colors?: MeshWriterColors;
+    /** Font family name (must be registered first) */
     'font-family'?: string;
+    /** Text anchor point */
     anchor?: 'left' | 'right' | 'center';
+    /** Height of letters in world units */
     'letter-height'?: number;
+    /** Thickness (depth) of letters in world units */
     'letter-thickness'?: number;
+    /** Emissive color as hex string (e.g., "#FF0000") */
     color?: string;
+    /** Material alpha/transparency (0-1) */
     alpha?: number;
 }
 
+/** Babylon namespace subset used for CSG injection */
+export interface BabylonCSGNamespace {
+    CSG?: unknown;
+    CSG2?: unknown;
+    InitializeCSG2Async?: () => void | Promise<void>;
+    IsCSG2Ready?: () => boolean;
+}
+
+/** Preferences for initializing MeshWriter */
 export interface MeshWriterPreferences {
+    /** Default font family name */
     defaultFont?: string;
+    /** Scale factor for all text */
     scale?: number;
+    /** Origin point for mesh positioning */
     meshOrigin?: 'letterCenter' | 'fontOrigin';
+    /** Enable debug logging */
     debug?: boolean;
-    babylon?: any;
+    /** Babylon namespace providing CSG helpers (used for ES module builds) */
+    babylon?: BabylonCSGNamespace;
 }
 
+// ============ Instance Types ============
+
+/** A text instance created by MeshWriter */
 export interface MeshWriterInstance {
-    getSPS(): any;
-    getMesh(): any;
-    getMaterial(): any;
+    /** Get the SolidParticleSystem containing letter meshes */
+    getSPS(): SolidParticleSystem | undefined;
+    /** Get the combined mesh containing all letters */
+    getMesh(): Mesh | undefined;
+    /** Get the material applied to the text */
+    getMaterial(): StandardMaterial;
+    /** Get the X offset for anchoring */
     getOffsetX(): number;
-    getLettersBoxes(): any[];
-    getLettersOrigins(): any[];
+    /** Get bounding boxes for each letter */
+    getLettersBoxes(): number[][];
+    /** Get origin positions for each letter */
+    getLettersOrigins(): number[][];
+    /** Get or set the emissive color */
     color(c?: string): string;
+    /** Get or set the alpha value */
     alpha(a?: number): number;
+    /** Update the emissive color */
     setColor(color: string): void;
+    /** Update the alpha value */
     setAlpha(alpha: number): void;
+    /** Temporarily override alpha */
     overrideAlpha(alpha: number): void;
+    /** Reset alpha to original value */
     resetAlpha(): void;
-    getLetterCenter(ix: number): any;
+    /** Get the center position of a letter by index */
+    getLetterCenter(ix: number): Vector2;
+    /** Dispose of all meshes and materials */
     dispose(): void;
-    clearall(): void;
 }
 
+/** Constructor function returned by MeshWriter factory */
 export interface MeshWriterConstructor {
     new (letters: string, options?: MeshWriterOptions): MeshWriterInstance;
     (letters: string, options?: MeshWriterOptions): MeshWriterInstance;
 }
 
+// ============ Font Types ============
+
+/** Font specification object containing glyph data */
 export interface FontSpec {
+    /** Whether to reverse hole winding */
     reverseHoles: boolean;
+    /** Whether to reverse shape winding */
     reverseShapes: boolean;
+    /** Character glyph data - indexed by character */
     [character: string]: any;
 }
 
-export type FontFactory = (codeList: (list: any[]) => string) => FontSpec;
+/** Function that creates font spec from codeList encoder */
+export type FontFactory = (codeList: (list: number[][]) => string) => FontSpec;
+
+/** Font data - either a FontSpec or FontFactory */
+export type FontData = FontSpec | FontFactory;
+
+// ============ Main API Types ============
+
+/** CSG version used for boolean operations */
+export type CSGVersion = 'CSG' | 'CSG2' | null;
+
+/** MeshWriter static API */
+export interface MeshWriterStatic {
+    /**
+     * Create a MeshWriter constructor asynchronously (required for Babylon 8+)
+     * Initializes CSG2 before returning
+     */
+    createAsync(scene: Scene, preferences?: MeshWriterPreferences): Promise<MeshWriterConstructor>;
+
+    /**
+     * Create a MeshWriter constructor synchronously (legacy, Babylon < 7.31)
+     * @deprecated Use createAsync for Babylon 8+
+     */
+    create(scene: Scene, preferences?: MeshWriterPreferences): MeshWriterConstructor;
+
+    /** Check if CSG is initialized and ready */
+    isReady(): boolean;
+
+    /** Get the CSG version being used */
+    getCSGVersion(): CSGVersion;
+
+    /** Set a custom CSG2 initializer function */
+    setCSGInitializer(init: () => void | Promise<void>): void;
+
+    /** Set a custom CSG ready check function */
+    setCSGReadyCheck(check: () => boolean): void;
+
+    /** Register a callback to run when CSG is ready */
+    onCSGReady(callback: () => void): void;
+
+    /** Manually mark CSG as ready */
+    markCSGReady(): void;
+    /** Initialize the internal CSG module with Babylon helpers */
+    initCSGModule(babylon: BabylonCSGNamespace): void;
+
+    /** Register a font for use with MeshWriter */
+    registerFont(name: string, fontData: FontData): void;
+
+    /** Register multiple font aliases pointing to the same font */
+    registerFontAliases(targetName: string, ...aliases: string[]): void;
+
+    /** Get a registered font by name */
+    getFont(name: string): FontSpec | undefined;
+
+    /** Check if a font is registered */
+    isFontRegistered(name: string): boolean;
+
+    /** Encode font coordinates to compressed string */
+    codeList(list: number[][]): string;
+
+    /** Decode compressed string to font coordinates */
+    decodeList(encoded: string): number[][];
+}
+
+// ============ Exports ============
+
+/** Main MeshWriter object with all static methods */
+export const MeshWriter: MeshWriterStatic;
+
+/** Create a MeshWriter constructor asynchronously */
+export function createMeshWriterAsync(scene: Scene, preferences?: MeshWriterPreferences): Promise<MeshWriterConstructor>;
+
+/** Create a MeshWriter constructor synchronously (legacy) */
+export function createMeshWriter(scene: Scene, preferences?: MeshWriterPreferences): MeshWriterConstructor;
+
+/** Check if CSG is initialized and ready */
+export function isCSGReady(): boolean;
+
+/** Get the CSG version being used */
+export function getCSGVersion(): CSGVersion;
+
+/** Set a custom CSG2 initializer function */
+export function setCSGInitializer(init: () => void | Promise<void>): void;
+
+/** Set a custom CSG ready check function */
+export function setCSGReadyCheck(check: () => boolean): void;
+
+/** Register a callback to run when CSG is ready */
+export function onCSGReady(callback: () => void): void;
+
+/** Manually mark CSG as ready */
+export function markCSGReady(): void;
+
+/** Register a font for use with MeshWriter */
+export function registerFont(name: string, fontData: FontData): void;
+
+/** Register multiple font aliases */
+export function registerFontAliases(targetName: string, ...aliases: string[]): void;
+
+/** Get a registered font by name */
+export function getFont(name: string): FontSpec | undefined;
+
+/** Check if a font is registered */
+export function isFontRegistered(name: string): boolean;
+
+/** Encode font coordinates to compressed string */
+export function codeList(list: number[][]): string;
+
+/** Decode compressed string to font coordinates */
+export function decodeList(encoded: string): number[][];
+
+/** Get list of registered font names */
+export function getRegisteredFonts(): string[];
+
+/** Unregister a font (primarily for testing) */
+export function unregisterFont(name: string): void;
+
+/** Clear all registered fonts (primarily for testing) */
+export function clearFonts(): void;
+
+/** Encode font coordinates (alias of codeList) */
+export function encodeFontData(list: number[][]): string;
+
+/** Decode font coordinates (alias of decodeList) */
+export function decodeFontData(encoded: string): number[][];
+
+/** Initialize the internal CSG module with Babylon helpers */
+export function initCSGModule(babylon: BabylonCSGNamespace): void;
+
+// ============ UMD Global Declarations ============
+
+declare global {
+    /** Global MeshWriter (UMD bundle) */
+    var MeshWriter: MeshWriterStatic | undefined;
+    /** Legacy name for MeshWriter (UMD bundle) */
+    var TYPE: MeshWriterStatic | undefined;
+
+    namespace BABYLON {
+        /** MeshWriter attached to BABYLON namespace (UMD bundle) */
+        var MeshWriter: MeshWriterStatic | undefined;
+    }
+}

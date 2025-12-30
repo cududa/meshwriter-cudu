@@ -5,12 +5,16 @@
 
 import { SolidParticleSystem } from './babylonImports.js';
 
+/** @typedef {import('@babylonjs/core/scene').Scene} Scene */
+/** @typedef {import('@babylonjs/core/Materials/material').Material} Material */
+/** @typedef {import('@babylonjs/core/Meshes/mesh').Mesh} Mesh */
+
 /**
  * Create an SPS from letter meshes
  * @param {Scene} scene - Babylon scene
  * @param {Array} meshesAndBoxes - [meshes, boxes, origins] from constructLetterPolygons
  * @param {Material} material - Material to apply to SPS mesh
- * @returns {[SolidParticleSystem, Mesh]} - [sps, spsMesh]
+ * @returns {[SolidParticleSystem | undefined, Mesh | undefined]} - [sps, spsMesh]
  */
 export function makeSPS(scene, meshesAndBoxes, material) {
     const meshes = meshesAndBoxes[0];

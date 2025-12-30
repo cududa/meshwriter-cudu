@@ -18,6 +18,17 @@ import {
     isPositiveNumber, round, setOption
 } from './utils.js';
 
+/** @typedef {import('@babylonjs/core/scene').Scene} Scene */
+
+/**
+ * @typedef {Object} MeshWriterPreferences
+ * @property {string} [defaultFont] - Default font family
+ * @property {number} [scale=1] - Scale factor
+ * @property {string} [meshOrigin="letterCenter"] - "letterCenter" or "fontOrigin"
+ * @property {boolean} [debug=false] - Enable debug logging
+ * @property {Object} [babylon] - Babylon.js namespace object with CSG classes (for ES module builds)
+ */
+
 // Constants
 const defaultColor = "#808080";
 const defaultOpac = 1;
@@ -25,11 +36,7 @@ const defaultOpac = 1;
 /**
  * Create a MeshWriter factory configured for a scene
  * @param {Scene} scene - Babylon.js scene
- * @param {Object} preferences - Configuration options
- * @param {string} [preferences.defaultFont] - Default font family
- * @param {number} [preferences.scale=1] - Scale factor
- * @param {string} [preferences.meshOrigin="letterCenter"] - "letterCenter" or "fontOrigin"
- * @param {boolean} [preferences.debug=false] - Enable debug logging
+ * @param {MeshWriterPreferences} [preferences={}] - Configuration options
  * @returns {Function} - MeshWriter constructor
  */
 export function createMeshWriter(scene, preferences = {}) {
@@ -170,16 +177,20 @@ export function createMeshWriter(scene, preferences = {}) {
  * Async factory for Babylon 8+ with CSG2
  * Handles CSG2 initialization automatically
  * @param {Scene} scene - Babylon.js scene
- * @param {Object} preferences - Configuration options
- * @param {Object} [preferences.babylon] - Babylon.js namespace object with CSG classes
+ * @param {MeshWriterPreferences} [preferences={}] - Configuration options
  * @returns {Promise<Function>} - MeshWriter constructor
  */
 export async function createMeshWriterAsync(scene, preferences = {}) {
     // Initialize CSG module with Babylon methods
     if (preferences.babylon) {
         initCSGModule(preferences.babylon);
-    } else if (typeof BABYLON !== "undefined") {
-        initCSGModule(BABYLON);
+    } else {
+        // Check for BABYLON global (UMD bundle usage)
+        /** @type {any} */
+        const globalBabylon = typeof globalThis !== 'undefined' ? globalThis.BABYLON : undefined;
+        if (globalBabylon) {
+            initCSGModule(globalBabylon);
+        }
     }
 
     // Initialize CSG2 if needed

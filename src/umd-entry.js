@@ -46,51 +46,85 @@ registerFont('WebGL-Dings', webglDings);
 registerFont('Web-dings', webglDings);
 
 /**
+ * Get the BABYLON global if available
+ * @returns {any}
+ */
+function getBabylonGlobal() {
+    if (typeof globalThis !== 'undefined' && globalThis.BABYLON) {
+        return globalThis.BABYLON;
+    }
+    return undefined;
+}
+
+/**
  * Legacy MeshWriter factory function
  * Matches the old API: var Writer = BABYLON.MeshWriter(scene, prefs)
+ * @param {any} scene
+ * @param {any} preferences
  */
 function MeshWriterFactory(scene, preferences) {
     // Initialize CSG from BABYLON global
-    if (typeof BABYLON !== 'undefined') {
-        initCSGModule(BABYLON);
+    const babylon = getBabylonGlobal();
+    if (babylon) {
+        initCSGModule(babylon);
     }
     return createMeshWriter(scene, preferences);
 }
 
 // Attach static methods to factory
-MeshWriterFactory.createAsync = async function(scene, preferences = {}) {
+/** @type {any} */
+const factory = MeshWriterFactory;
+
+factory.createAsync = async function(scene, preferences = {}) {
     // Initialize CSG from BABYLON global
-    if (typeof BABYLON !== 'undefined') {
-        initCSGModule(BABYLON);
+    const babylon = getBabylonGlobal();
+    if (babylon) {
+        initCSGModule(babylon);
     }
     return createMeshWriterAsync(scene, preferences);
 };
 
-MeshWriterFactory.isReady = isCSGReady;
-MeshWriterFactory.getCSGVersion = getCSGVersion;
-MeshWriterFactory.setCSGInitializer = setCSGInitializer;
-MeshWriterFactory.setCSGReadyCheck = setCSGReadyCheck;
-MeshWriterFactory.onCSGReady = onCSGReady;
-MeshWriterFactory.markCSGReady = markCSGReady;
-MeshWriterFactory.registerFont = registerFont;
-MeshWriterFactory.getFont = getFont;
-MeshWriterFactory.isFontRegistered = isFontRegistered;
-MeshWriterFactory.codeList = codeList;
-MeshWriterFactory.decodeList = decodeList;
+// Sync create method (alias for backwards compatibility)
+factory.create = function(scene, preferences = {}) {
+    const babylon = getBabylonGlobal();
+    if (babylon) {
+        initCSGModule(babylon);
+    }
+    return createMeshWriter(scene, preferences);
+};
+
+factory.isReady = isCSGReady;
+factory.getCSGVersion = getCSGVersion;
+factory.setCSGInitializer = setCSGInitializer;
+factory.setCSGReadyCheck = setCSGReadyCheck;
+factory.onCSGReady = onCSGReady;
+factory.markCSGReady = markCSGReady;
+factory.registerFont = registerFont;
+factory.getFont = getFont;
+factory.isFontRegistered = isFontRegistered;
+factory.codeList = codeList;
+factory.decodeList = decodeList;
 
 // Attach to globals for browser usage
 if (typeof window !== 'undefined') {
-    window.MeshWriter = MeshWriterFactory;
-    window.TYPE = MeshWriterFactory; // Legacy name
+    /** @type {any} */
+    const win = window;
+    win.MeshWriter = factory;
+    win.TYPE = factory; // Legacy name
 }
 
-if (typeof global !== 'undefined') {
-    global.MeshWriter = MeshWriterFactory;
+if (typeof globalThis !== 'undefined') {
+    /** @type {any} */
+    const gt = globalThis;
+    if (gt.global) {
+        gt.global.MeshWriter = factory;
+    }
 }
 
 // Attach to BABYLON namespace if available
-if (typeof BABYLON !== 'undefined') {
-    BABYLON.MeshWriter = MeshWriterFactory;
+const babylon = getBabylonGlobal();
+if (babylon) {
+    babylon.MeshWriter = factory;
 }
 
-export default MeshWriterFactory;
+export default factory;

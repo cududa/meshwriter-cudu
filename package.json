@@ -17,10 +17,10 @@
     },
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "build:webpack": "webpack",
         "build:rollup": "rollup -c",
         "build:types": "tsc",
         "build": "npm run build:rollup && npm run build:types",
+        "typecheck": "tsc --noEmit",
         "dev": "rollup -c -w"
     },
     "repository": {
@@ -55,9 +55,7 @@
         "@rollup/plugin-terser": "^0.4.0",
         "earcut": "^3.0.2",
         "rollup": "^4.0.0",
-        "typescript": "^5.0.0",
-        "webpack": "^4.32.2",
-        "webpack-cli": "^3.3.2"
+        "typescript": "^5.0.0"
     },
     "files": [
         "dist",
