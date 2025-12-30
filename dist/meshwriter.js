@@ -1,12 +1,6 @@
-/*!
- * Babylon MeshWriter
- * https://github.com/briantbutton/meshwriter
- * (c) 2018-2021 Brian Todd Button
- * Released under the MIT license
- */
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
-/******/ 	var installedModules = {}, Wrapper;                                                                // +-+
+/******/ 	var installedModules = {};
 /******/
 /******/ 	// The require function
 /******/ 	function __webpack_require__(moduleId) {
@@ -87,22 +81,19 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/  Wrapper = __webpack_require__(__webpack_require__.s = 0);                                          // +-+
-/******/  if ( typeof module === 'object' && module.exports ) {                                              // +-+
-/******/    module.exports = { MeshWriter : Wrapper }                                                        // +-+
-/******/  }                                                                                                  // +-+
-/******/  if ( typeof define === 'function' && define.amd ) {                                                // +-+
-/******/    define ( 'meshwriter' , [], function() { return MeshWriter } )                                   // +-+
-/******/  }                                                                                                  // +-+
-/******/  return Wrapper;                                                                                    // +-+
-/******/ 	// return __webpack_require__(__webpack_require__.s = 0);                                          // +-+
+/******/ 	return __webpack_require__(__webpack_require__.s = 0);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
 /***/ (function(module, exports, __webpack_require__) {
 
-/* WEBPACK VAR INJECTION */(function(global) {var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
+/* WEBPACK VAR INJECTION */(function(global) {var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
+ * Babylon MeshWriter
+ * https://github.com/briantbutton/meshwriter
+ * (c) 2018-2021 Brian Todd Button
+ * Released under the MIT license
+ */
 
 
 // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
@@ -120,7 +111,8 @@
     var   b128back,b128digits;
     var   earcut                 = __webpack_require__(7);
     var   B                      = {},
-          methodsList            = ["Vector2","Vector3","Path2","Curve3","Color3","SolidParticleSystem","PolygonMeshBuilder","CSG","StandardMaterial","Mesh"];
+          methodsList            = ["Vector2","Vector3","Path2","Curve3","Color3","SolidParticleSystem","PolygonMeshBuilder","StandardMaterial","Mesh"],
+          csgMethodsList         = ["CSG", "CSG2", "InitializeCSG2Async"];
     prepArray();
     // >>>>>  STEP 2 <<<<<
     hpb                          = HPB(codeList);
@@ -148,6 +140,31 @@
     defaultOpac                  = 1;
     curveSampleSize              = 6;
     naturalLetterHeight          = 1000;
+
+    // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
+    //  CSG VERSION DETECTION  CSG VERSION DETECTION  CSG VERSION DETECTION
+    // Babylon 7.31+ deprecated CSG in favor of CSG2
+    var csgVersion               = null;   // 'CSG2', 'CSG', or null
+    var csgReady                 = false;  // For async CSG2 initialization
+
+    function detectCSGVersion(){
+      // Prefer CSG2 (Babylon 7.31+)
+      if(isObject(B.CSG2) && typeof B.InitializeCSG2Async === 'function'){
+        return 'CSG2';
+      }
+      // Fall back to legacy CSG
+      if(isObject(B.CSG) && typeof B.CSG.FromMesh === 'function'){
+        return 'CSG';
+      }
+      return null;
+    }
+
+    function isCSGReady(){
+      if(csgVersion === 'CSG2'){
+        return csgReady;
+      }
+      return csgVersion === 'CSG';
+    }
 
     // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
     //  SUPERCONSTRUCTOR  SUPERCONSTRUCTOR  SUPERCONSTRUCTOR 
@@ -294,9 +311,45 @@
       cacheMethods(BABYLON);
       BABYLON.MeshWriter         = Wrapper;
     };
-    if ( typeof module === 'object' && module.exports ) {
+    if (  true && module.exports ) {
       module.exports             = Wrapper;
     }
+
+    // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
+    //  ASYNC FACTORY  ASYNC FACTORY  ASYNC FACTORY
+    // For Babylon 8+ which requires async CSG2 initialization
+    Wrapper.createAsync = async function(scene, preferences){
+      var prefs                  = isObject(preferences) ? preferences : {};
+
+      // Cache methods first
+      if(prefs.methods){
+        cacheMethods(prefs.methods);
+      }else if(typeof BABYLON === "object"){
+        cacheMethods(BABYLON);
+      }
+
+      // Initialize CSG2 if available and not ready
+      if(csgVersion === 'CSG2' && !csgReady){
+        if(typeof B.InitializeCSG2Async === 'function'){
+          await B.InitializeCSG2Async();
+          csgReady               = true;
+        }
+      }
+
+      // Return the configured Wrapper
+      return Wrapper(scene, preferences);
+    };
+
+    // Check if CSG is ready (useful for sync usage with manual CSG2 init)
+    Wrapper.isReady = function(){
+      return isCSGReady();
+    };
+
+    // Get current CSG version being used
+    Wrapper.getCSGVersion = function(){
+      return csgVersion;
+    };
+
     return Wrapper;
 
     //  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =
@@ -523,6 +576,20 @@
 
       // ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~
       function punchHolesInShapes(shapesList,holesList){
+        // Validate CSG is available and initialized
+        if(csgVersion === 'CSG2' && !csgReady){
+          throw new Error(
+            "MeshWriter: CSG2 not initialized. " +
+            "Use 'await MeshWriter.createAsync(scene, prefs)' or call " +
+            "'await BABYLON.InitializeCSG2Async()' before creating MeshWriter."
+          );
+        }
+        if(csgVersion === null){
+          throw new Error(
+            "MeshWriter: No CSG implementation found. " +
+            "Ensure BABYLON.CSG or BABYLON.CSG2 is available."
+          );
+        }
         var letterMeshes         = [],j;
         for ( j=0 ; j<shapesList.length ; j++ ) {
           let shape              = shapesList[j];
@@ -536,13 +603,30 @@
         return letterMeshes
       };
       function punchHolesInShape(shape,holes,letter,i){
-        var csgShape             = B.CSG.FromMesh(shape),k;
-        for ( k=0; k<holes.length ; k++ ) {
-          csgShape               = csgShape.subtract(B.CSG.FromMesh(holes[k]))
+        var meshName             = "Net-"+letter+i+"-"+weeid();
+        var resultMesh, csgShape, k;
+
+        if(csgVersion === 'CSG2'){
+          // CSG2 API (Babylon 7.31+)
+          csgShape               = B.CSG2.FromMesh(shape);
+          for ( k=0; k<holes.length ; k++ ) {
+            csgShape             = csgShape.subtract(B.CSG2.FromMesh(holes[k]));
+          }
+          // CSG2.toMesh signature: (name, scene, options)
+          resultMesh             = csgShape.toMesh(meshName, scene, {});
+        }else{
+          // Legacy CSG API (Babylon < 7.31)
+          csgShape               = B.CSG.FromMesh(shape);
+          for ( k=0; k<holes.length ; k++ ) {
+            csgShape             = csgShape.subtract(B.CSG.FromMesh(holes[k]));
+          }
+          // Legacy CSG.toMesh signature: (name, material, scene)
+          resultMesh             = csgShape.toMesh(meshName, null, scene);
         }
+
         holes.forEach(h=>h.dispose());
         shape.dispose();
-        return csgShape.toMesh("Net-"+letter+i+"-"+weeid(), null, scene)
+        return resultMesh;
       };
     };
 
@@ -686,6 +770,7 @@
     function cacheMethods(src){
       var incomplete             = false;
       if(isObject(src)){
+        // Cache core methods (required)
         methodsList.forEach(function(meth){
           if(isObject(src[meth])){
             B[meth]              = src[meth]
@@ -693,6 +778,14 @@
             incomplete           = meth
           }
         });
+        // Cache CSG methods (optional - auto-detect which is available)
+        csgMethodsList.forEach(function(meth){
+          if(src[meth] !== undefined){
+            B[meth]              = src[meth]
+          }
+        });
+        // Detect which CSG version is available
+        csgVersion               = detectCSGVersion();
         if(!incomplete){supplementCurveFunctions()}
       }
       if(isString(incomplete)){
@@ -706,37 +799,38 @@
     // 
     function supplementCurveFunctions(){
       if ( isObject ( B.Path2 ) ) {
-        if ( !B.Path2.prototype.addQuadraticCurveTo ) {
-          B.Path2.prototype.addQuadraticCurveTo = function(redX, redY, blueX, blueY){
-            var points           = this.getPoints();
-            var lastPoint        = points[points.length - 1];
-            var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
-            var control          = new B.Vector3(redX, redY, 0);
-            var destination      = new B.Vector3(blueX, blueY, 0);
-            var nb_of_points     = curveSampleSize;
-            var curve            = B.Curve3.CreateQuadraticBezier(origin, control, destination, nb_of_points);
-            var curvePoints      = curve.getPoints();
-            for(var i=1; i<curvePoints.length; i++){
-              this.addLineTo(curvePoints[i].x, curvePoints[i].y);
-            }
+        // Always override curve functions to ensure consistent, optimized segment count
+        // Native Babylon 6+ uses 36 segments which causes significant slowdown
+        // MeshWriter uses curveSampleSize (6) for better performance
+        B.Path2.prototype.addQuadraticCurveTo = function(redX, redY, blueX, blueY){
+          var points           = this.getPoints();
+          var lastPoint        = points[points.length - 1];
+          var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
+          var control          = new B.Vector3(redX, redY, 0);
+          var destination      = new B.Vector3(blueX, blueY, 0);
+          var nb_of_points     = curveSampleSize;
+          var curve            = B.Curve3.CreateQuadraticBezier(origin, control, destination, nb_of_points);
+          var curvePoints      = curve.getPoints();
+          for(var i=1; i<curvePoints.length; i++){
+            this.addLineTo(curvePoints[i].x, curvePoints[i].y);
           }
-        }
-        if ( !B.Path2.prototype.addCubicCurveTo ) {
-          B.Path2.prototype.addCubicCurveTo = function(redX, redY, greenX, greenY, blueX, blueY){
-            var points           = this.getPoints();
-            var lastPoint        = points[points.length - 1];
-            var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
-            var control1         = new B.Vector3(redX, redY, 0);
-            var control2         = new B.Vector3(greenX, greenY, 0);
-            var destination      = new B.Vector3(blueX, blueY, 0);
-            var nb_of_points     = Math.floor(0.3+curveSampleSize*1.5);
-            var curve            = B.Curve3.CreateCubicBezier(origin, control1, control2, destination, nb_of_points);
-            var curvePoints      = curve.getPoints();
-            for(var i=1; i<curvePoints.length; i++){
-              this.addLineTo(curvePoints[i].x, curvePoints[i].y);
-            }
+          return this;  // Return this for method chaining
+        };
+        B.Path2.prototype.addCubicCurveTo = function(redX, redY, greenX, greenY, blueX, blueY){
+          var points           = this.getPoints();
+          var lastPoint        = points[points.length - 1];
+          var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
+          var control1         = new B.Vector3(redX, redY, 0);
+          var control2         = new B.Vector3(greenX, greenY, 0);
+          var destination      = new B.Vector3(blueX, blueY, 0);
+          var nb_of_points     = Math.floor(0.3+curveSampleSize*1.5);
+          var curve            = B.Curve3.CreateCubicBezier(origin, control1, control2, destination, nb_of_points);
+          var curvePoints      = curve.getPoints();
+          for(var i=1; i<curvePoints.length; i++){
+            this.addLineTo(curvePoints[i].x, curvePoints[i].y);
           }
-        }
+          return this;  // Return this for method chaining
+        };
       }
     }
     //  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =  
@@ -1797,7 +1891,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  HELVETICANEU
         yMax           : 714,
         wdth           : 241
       };
-      font[String.fromCharCode(305)]        = {
+      font["ı"]        = {
         sC             : [
                            'D#AB B@AB B@IL D#IL D#AB'
                          ],
@@ -1807,10 +1901,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  HELVETICANEU
         yMax           : 500,
         wdth           : 241
       };
-      font["í"]        = supplement(font[String.fromCharCode(305)],"acute",0,0);
-      font["ì"]        = supplement(font[String.fromCharCode(305)],"grave",0,0);
-      font["ï"]        = supplement(font[String.fromCharCode(305)],"dieresis",0,0);
-      font["î"]        = supplement(font[String.fromCharCode(305)],"circumflex",0,0);
+      font["í"]        = supplement(font["ı"],"acute",0,0);
+      font["ì"]        = supplement(font["ı"],"grave",0,0);
+      font["ï"]        = supplement(font["ı"],"dieresis",0,0);
+      font["î"]        = supplement(font["ı"],"circumflex",0,0);
       font["j"]        = {
         sC      : [
                            'D#J¡ B@J¡ B@LV D#LV D#J¡',
@@ -2972,7 +3066,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  COMIC SANS M
         yMax           : 731,
         wdth           : 280
       };
-      font[String.fromCharCode(305)]        = {
+      font["ı"]        = {
         sC             : [
                            'D0D~ D0DBD3CN D7BYD7AÁ D7AtC¿AX C¥A=CWA= C-A=BµAX BxAtBxAÁ BxBYBuCN BqDBBqD~ BqEYB{Fc B§GlB§HG B§HtBÂH± C:I)CeI) C±I)D(H± DCHtDCHG DCGlD9Fc D0EYD0D~'
                          ],
@@ -2982,10 +3076,10 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  COMIC SANS M
         yMax           : 730,
         wdth           : 280
       };
-      font["í"]        = supplement(font[String.fromCharCode(305)],"acute",-20,0);
-      font["ì"]        = supplement(font[String.fromCharCode(305)],"grave",-20,0);
-      font["ï"]        = supplement(font[String.fromCharCode(305)],"dieresis",-120,0);
-      font["î"]        = supplement(font[String.fromCharCode(305)],"circumflex",-60,0);
+      font["í"]        = supplement(font["ı"],"acute",-20,0);
+      font["ì"]        = supplement(font["ı"],"grave",-20,0);
+      font["ï"]        = supplement(font["ı"],"dieresis",-120,0);
+      font["î"]        = supplement(font["ı"],"circumflex",-60,0);
       font["j"]        = {
         sC             : [
                            'D¥?` D¦@QDbD( D?HB D?HtD[H¼ DxI?E!I? ECI?EeI& E©H±E«Hv F(DB FB?j FB>bEr=t D¼<{C¾<{ BI<{A<?> A0?XA0?n A0?·AO@0 An@LA¸@L BN@LB°?M B¿?,CC>o Cj>=C¾>= DF>=De>~ D}?.D¥?`',
@@ -5391,37 +5485,37 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  WEBGL-DINGS 
 
 /***/ }),
 /* 7 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return earcut; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "deviation", function() { return deviation; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "flatten", function() { return flatten; });
 
+function earcut(data, holeIndices, dim = 2) {
 
-module.exports = earcut;
-module.exports.default = earcut;
-
-function earcut(data, holeIndices, dim) {
-
-    dim = dim || 2;
-
-    var hasHoles = holeIndices && holeIndices.length,
-        outerLen = hasHoles ? holeIndices[0] * dim : data.length,
-        outerNode = linkedList(data, 0, outerLen, dim, true),
-        triangles = [];
+    const hasHoles = holeIndices && holeIndices.length;
+    const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+    let outerNode = linkedList(data, 0, outerLen, dim, true);
+    const triangles = [];
 
     if (!outerNode || outerNode.next === outerNode.prev) return triangles;
 
-    var minX, minY, maxX, maxY, x, y, invSize;
+    let minX, minY, invSize;
 
     if (hasHoles) outerNode = eliminateHoles(data, holeIndices, outerNode, dim);
 
     // if the shape is not too simple, we'll use z-order curve hash later; calculate polygon bbox
     if (data.length > 80 * dim) {
-        minX = maxX = data[0];
-        minY = maxY = data[1];
+        minX = data[0];
+        minY = data[1];
+        let maxX = minX;
+        let maxY = minY;
 
-        for (var i = dim; i < outerLen; i += dim) {
-            x = data[i];
-            y = data[i + 1];
+        for (let i = dim; i < outerLen; i += dim) {
+            const x = data[i];
+            const y = data[i + 1];
             if (x < minX) minX = x;
             if (y < minY) minY = y;
             if (x > maxX) maxX = x;
@@ -5430,22 +5524,22 @@ function earcut(data, holeIndices, dim) {
 
         // minX, minY and invSize are later used to transform coords into integers for z-order calculation
         invSize = Math.max(maxX - minX, maxY - minY);
-        invSize = invSize !== 0 ? 1 / invSize : 0;
+        invSize = invSize !== 0 ? 32767 / invSize : 0;
     }
 
-    earcutLinked(outerNode, triangles, dim, minX, minY, invSize);
+    earcutLinked(outerNode, triangles, dim, minX, minY, invSize, 0);
 
     return triangles;
 }
 
 // create a circular doubly linked list from polygon points in the specified winding order
 function linkedList(data, start, end, dim, clockwise) {
-    var i, last;
+    let last;
 
     if (clockwise === (signedArea(data, start, end, dim) > 0)) {
-        for (i = start; i < end; i += dim) last = insertNode(i, data[i], data[i + 1], last);
+        for (let i = start; i < end; i += dim) last = insertNode(i / dim | 0, data[i], data[i + 1], last);
     } else {
-        for (i = end - dim; i >= start; i -= dim) last = insertNode(i, data[i], data[i + 1], last);
+        for (let i = end - dim; i >= start; i -= dim) last = insertNode(i / dim | 0, data[i], data[i + 1], last);
     }
 
     if (last && equals(last, last.next)) {
@@ -5461,7 +5555,7 @@ function filterPoints(start, end) {
     if (!start) return start;
     if (!end) end = start;
 
-    var p = start,
+    let p = start,
         again;
     do {
         again = false;
@@ -5487,19 +5581,15 @@ function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
     // interlink polygon nodes in z-order
     if (!pass && invSize) indexCurve(ear, minX, minY, invSize);
 
-    var stop = ear,
-        prev, next;
+    let stop = ear;
 
     // iterate through ears, slicing them one by one
     while (ear.prev !== ear.next) {
-        prev = ear.prev;
-        next = ear.next;
+        const prev = ear.prev;
+        const next = ear.next;
 
         if (invSize ? isEarHashed(ear, minX, minY, invSize) : isEar(ear)) {
-            // cut off the triangle
-            triangles.push(prev.i / dim);
-            triangles.push(ear.i / dim);
-            triangles.push(next.i / dim);
+            triangles.push(prev.i, ear.i, next.i); // cut off the triangle
 
             removeNode(ear);
 
@@ -5520,7 +5610,7 @@ function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
 
             // if this didn't work, try curing all small self-intersections locally
             } else if (pass === 1) {
-                ear = cureLocalIntersections(filterPoints(ear), triangles, dim);
+                ear = cureLocalIntersections(filterPoints(ear), triangles);
                 earcutLinked(ear, triangles, dim, minX, minY, invSize, 2);
 
             // as a last resort, try splitting the remaining polygon into two
@@ -5535,17 +5625,25 @@ function earcutLinked(ear, triangles, dim, minX, minY, invSize, pass) {
 
 // check whether a polygon node forms a valid ear with adjacent nodes
 function isEar(ear) {
-    var a = ear.prev,
+    const a = ear.prev,
         b = ear,
         c = ear.next;
 
     if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
 
     // now make sure we don't have other points inside the potential ear
-    var p = ear.next.next;
+    const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
 
-    while (p !== ear.prev) {
-        if (pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
+    // triangle bbox
+    const x0 = Math.min(ax, bx, cx),
+        y0 = Math.min(ay, by, cy),
+        x1 = Math.max(ax, bx, cx),
+        y1 = Math.max(ay, by, cy);
+
+    let p = c.next;
+    while (p !== a) {
+        if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 &&
+            pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, p.x, p.y) &&
             area(p.prev, p, p.next) >= 0) return false;
         p = p.next;
     }
@@ -5554,51 +5652,49 @@ function isEar(ear) {
 }
 
 function isEarHashed(ear, minX, minY, invSize) {
-    var a = ear.prev,
+    const a = ear.prev,
         b = ear,
         c = ear.next;
 
     if (area(a, b, c) >= 0) return false; // reflex, can't be an ear
 
-    // triangle bbox; min & max are calculated like this for speed
-    var minTX = a.x < b.x ? (a.x < c.x ? a.x : c.x) : (b.x < c.x ? b.x : c.x),
-        minTY = a.y < b.y ? (a.y < c.y ? a.y : c.y) : (b.y < c.y ? b.y : c.y),
-        maxTX = a.x > b.x ? (a.x > c.x ? a.x : c.x) : (b.x > c.x ? b.x : c.x),
-        maxTY = a.y > b.y ? (a.y > c.y ? a.y : c.y) : (b.y > c.y ? b.y : c.y);
+    const ax = a.x, bx = b.x, cx = c.x, ay = a.y, by = b.y, cy = c.y;
+
+    // triangle bbox
+    const x0 = Math.min(ax, bx, cx),
+        y0 = Math.min(ay, by, cy),
+        x1 = Math.max(ax, bx, cx),
+        y1 = Math.max(ay, by, cy);
 
     // z-order range for the current triangle bbox;
-    var minZ = zOrder(minTX, minTY, minX, minY, invSize),
-        maxZ = zOrder(maxTX, maxTY, minX, minY, invSize);
+    const minZ = zOrder(x0, y0, minX, minY, invSize),
+        maxZ = zOrder(x1, y1, minX, minY, invSize);
 
-    var p = ear.prevZ,
+    let p = ear.prevZ,
         n = ear.nextZ;
 
     // look for points inside the triangle in both directions
     while (p && p.z >= minZ && n && n.z <= maxZ) {
-        if (p !== ear.prev && p !== ear.next &&
-            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
-            area(p.prev, p, p.next) >= 0) return false;
+        if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c &&
+            pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, p.x, p.y) && area(p.prev, p, p.next) >= 0) return false;
         p = p.prevZ;
 
-        if (n !== ear.prev && n !== ear.next &&
-            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
-            area(n.prev, n, n.next) >= 0) return false;
+        if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c &&
+            pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, n.x, n.y) && area(n.prev, n, n.next) >= 0) return false;
         n = n.nextZ;
     }
 
     // look for remaining points in decreasing z-order
     while (p && p.z >= minZ) {
-        if (p !== ear.prev && p !== ear.next &&
-            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) &&
-            area(p.prev, p, p.next) >= 0) return false;
+        if (p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1 && p !== a && p !== c &&
+            pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, p.x, p.y) && area(p.prev, p, p.next) >= 0) return false;
         p = p.prevZ;
     }
 
     // look for remaining points in increasing z-order
     while (n && n.z <= maxZ) {
-        if (n !== ear.prev && n !== ear.next &&
-            pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, n.x, n.y) &&
-            area(n.prev, n, n.next) >= 0) return false;
+        if (n.x >= x0 && n.x <= x1 && n.y >= y0 && n.y <= y1 && n !== a && n !== c &&
+            pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, n.x, n.y) && area(n.prev, n, n.next) >= 0) return false;
         n = n.nextZ;
     }
 
@@ -5606,17 +5702,15 @@ function isEarHashed(ear, minX, minY, invSize) {
 }
 
 // go through all polygon nodes and cure small local self-intersections
-function cureLocalIntersections(start, triangles, dim) {
-    var p = start;
+function cureLocalIntersections(start, triangles) {
+    let p = start;
     do {
-        var a = p.prev,
+        const a = p.prev,
             b = p.next.next;
 
         if (!equals(a, b) && intersects(a, p, p.next, b) && locallyInside(a, b) && locallyInside(b, a)) {
 
-            triangles.push(a.i / dim);
-            triangles.push(p.i / dim);
-            triangles.push(b.i / dim);
+            triangles.push(a.i, p.i, b.i);
 
             // remove two nodes involved
             removeNode(p);
@@ -5633,21 +5727,21 @@ function cureLocalIntersections(start, triangles, dim) {
 // try splitting polygon into two and triangulate them independently
 function splitEarcut(start, triangles, dim, minX, minY, invSize) {
     // look for a valid diagonal that divides the polygon into two
-    var a = start;
+    let a = start;
     do {
-        var b = a.next.next;
+        let b = a.next.next;
         while (b !== a.prev) {
             if (a.i !== b.i && isValidDiagonal(a, b)) {
                 // split the polygon in two by the diagonal
-                var c = splitPolygon(a, b);
+                let c = splitPolygon(a, b);
 
                 // filter colinear points around the cuts
                 a = filterPoints(a, a.next);
                 c = filterPoints(c, c.next);
 
                 // run earcut on each half
-                earcutLinked(a, triangles, dim, minX, minY, invSize);
-                earcutLinked(c, triangles, dim, minX, minY, invSize);
+                earcutLinked(a, triangles, dim, minX, minY, invSize, 0);
+                earcutLinked(c, triangles, dim, minX, minY, invSize, 0);
                 return;
             }
             b = b.next;
@@ -5658,61 +5752,75 @@ function splitEarcut(start, triangles, dim, minX, minY, invSize) {
 
 // link every hole into the outer loop, producing a single-ring polygon without holes
 function eliminateHoles(data, holeIndices, outerNode, dim) {
-    var queue = [],
-        i, len, start, end, list;
+    const queue = [];
 
-    for (i = 0, len = holeIndices.length; i < len; i++) {
-        start = holeIndices[i] * dim;
-        end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
-        list = linkedList(data, start, end, dim, false);
+    for (let i = 0, len = holeIndices.length; i < len; i++) {
+        const start = holeIndices[i] * dim;
+        const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+        const list = linkedList(data, start, end, dim, false);
         if (list === list.next) list.steiner = true;
         queue.push(getLeftmost(list));
     }
 
-    queue.sort(compareX);
+    queue.sort(compareXYSlope);
 
     // process holes from left to right
-    for (i = 0; i < queue.length; i++) {
-        eliminateHole(queue[i], outerNode);
-        outerNode = filterPoints(outerNode, outerNode.next);
+    for (let i = 0; i < queue.length; i++) {
+        outerNode = eliminateHole(queue[i], outerNode);
     }
 
     return outerNode;
 }
 
-function compareX(a, b) {
-    return a.x - b.x;
+function compareXYSlope(a, b) {
+    let result = a.x - b.x;
+    // when the left-most point of 2 holes meet at a vertex, sort the holes counterclockwise so that when we find
+    // the bridge to the outer shell is always the point that they meet at.
+    if (result === 0) {
+        result = a.y - b.y;
+        if (result === 0) {
+            const aSlope = (a.next.y - a.y) / (a.next.x - a.x);
+            const bSlope = (b.next.y - b.y) / (b.next.x - b.x);
+            result = aSlope - bSlope;
+        }
+    }
+    return result;
 }
 
-// find a bridge between vertices that connects hole with an outer ring and and link it
+// find a bridge between vertices that connects hole with an outer ring and link it
 function eliminateHole(hole, outerNode) {
-    outerNode = findHoleBridge(hole, outerNode);
-    if (outerNode) {
-        var b = splitPolygon(outerNode, hole);
-        filterPoints(b, b.next);
+    const bridge = findHoleBridge(hole, outerNode);
+    if (!bridge) {
+        return outerNode;
     }
+
+    const bridgeReverse = splitPolygon(bridge, hole);
+
+    // filter collinear points around the cuts
+    filterPoints(bridgeReverse, bridgeReverse.next);
+    return filterPoints(bridge, bridge.next);
 }
 
 // David Eberly's algorithm for finding a bridge between hole and outer polygon
 function findHoleBridge(hole, outerNode) {
-    var p = outerNode,
-        hx = hole.x,
-        hy = hole.y,
-        qx = -Infinity,
-        m;
+    let p = outerNode;
+    const hx = hole.x;
+    const hy = hole.y;
+    let qx = -Infinity;
+    let m;
 
     // find a segment intersected by a ray from the hole's leftmost point to the left;
     // segment's endpoint with lesser x will be potential connection point
+    // unless they intersect at a vertex, then choose the vertex
+    if (equals(hole, p)) return p;
     do {
-        if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
-            var x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
+        if (equals(hole, p.next)) return p.next;
+        else if (hy <= p.y && hy >= p.next.y && p.next.y !== p.y) {
+            const x = p.x + (hy - p.y) * (p.next.x - p.x) / (p.next.y - p.y);
             if (x <= hx && x > qx) {
                 qx = x;
-                if (x === hx) {
-                    if (hy === p.y) return p;
-                    if (hy === p.next.y) return p.next;
-                }
                 m = p.x < p.next.x ? p : p.next;
+                if (x === hx) return m; // hole touches outer segment; pick leftmost endpoint
             }
         }
         p = p.next;
@@ -5720,17 +5828,14 @@ function findHoleBridge(hole, outerNode) {
 
     if (!m) return null;
 
-    if (hx === qx) return m; // hole touches outer segment; pick leftmost endpoint
-
     // look for points inside the triangle of hole point, segment intersection and endpoint;
     // if there are no points found, we have a valid connection;
     // otherwise choose the point of the minimum angle with the ray as connection point
 
-    var stop = m,
-        mx = m.x,
-        my = m.y,
-        tanMin = Infinity,
-        tan;
+    const stop = m;
+    const mx = m.x;
+    const my = m.y;
+    let tanMin = Infinity;
 
     p = m;
 
@@ -5738,7 +5843,7 @@ function findHoleBridge(hole, outerNode) {
         if (hx >= p.x && p.x >= mx && hx !== p.x &&
                 pointInTriangle(hy < my ? hx : qx, hy, mx, my, hy < my ? qx : hx, hy, p.x, p.y)) {
 
-            tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
+            const tan = Math.abs(hy - p.y) / (hx - p.x); // tangential
 
             if (locallyInside(p, hole) &&
                 (tan < tanMin || (tan === tanMin && (p.x > m.x || (p.x === m.x && sectorContainsSector(m, p)))))) {
@@ -5760,9 +5865,9 @@ function sectorContainsSector(m, p) {
 
 // interlink polygon nodes in z-order
 function indexCurve(start, minX, minY, invSize) {
-    var p = start;
+    let p = start;
     do {
-        if (p.z === null) p.z = zOrder(p.x, p.y, minX, minY, invSize);
+        if (p.z === 0) p.z = zOrder(p.x, p.y, minX, minY, invSize);
         p.prevZ = p.prev;
         p.nextZ = p.next;
         p = p.next;
@@ -5777,25 +5882,26 @@ function indexCurve(start, minX, minY, invSize) {
 // Simon Tatham's linked list merge sort algorithm
 // http://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
 function sortLinked(list) {
-    var i, p, q, e, tail, numMerges, pSize, qSize,
-        inSize = 1;
+    let numMerges;
+    let inSize = 1;
 
     do {
-        p = list;
+        let p = list;
+        let e;
         list = null;
-        tail = null;
+        let tail = null;
         numMerges = 0;
 
         while (p) {
             numMerges++;
-            q = p;
-            pSize = 0;
-            for (i = 0; i < inSize; i++) {
+            let q = p;
+            let pSize = 0;
+            for (let i = 0; i < inSize; i++) {
                 pSize++;
                 q = q.nextZ;
                 if (!q) break;
             }
-            qSize = inSize;
+            let qSize = inSize;
 
             while (pSize > 0 || (qSize > 0 && q)) {
 
@@ -5830,8 +5936,8 @@ function sortLinked(list) {
 // z-order of a point given coords and inverse of the longer side of data bbox
 function zOrder(x, y, minX, minY, invSize) {
     // coords are transformed into non-negative 15-bit integer range
-    x = 32767 * (x - minX) * invSize;
-    y = 32767 * (y - minY) * invSize;
+    x = (x - minX) * invSize | 0;
+    y = (y - minY) * invSize | 0;
 
     x = (x | (x << 8)) & 0x00FF00FF;
     x = (x | (x << 4)) & 0x0F0F0F0F;
@@ -5848,7 +5954,7 @@ function zOrder(x, y, minX, minY, invSize) {
 
 // find the leftmost node of a polygon ring
 function getLeftmost(start) {
-    var p = start,
+    let p = start,
         leftmost = start;
     do {
         if (p.x < leftmost.x || (p.x === leftmost.x && p.y < leftmost.y)) leftmost = p;
@@ -5860,14 +5966,19 @@ function getLeftmost(start) {
 
 // check if a point lies within a convex triangle
 function pointInTriangle(ax, ay, bx, by, cx, cy, px, py) {
-    return (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0 &&
-           (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0 &&
-           (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0;
+    return (cx - px) * (ay - py) >= (ax - px) * (cy - py) &&
+           (ax - px) * (by - py) >= (bx - px) * (ay - py) &&
+           (bx - px) * (cy - py) >= (cx - px) * (by - py);
+}
+
+// check if a point lies within a convex triangle but false if its equal to the first point of the triangle
+function pointInTriangleExceptFirst(ax, ay, bx, by, cx, cy, px, py) {
+    return !(ax === px && ay === py) && pointInTriangle(ax, ay, bx, by, cx, cy, px, py);
 }
 
 // check if a diagonal between two polygon nodes is valid (lies in polygon interior)
 function isValidDiagonal(a, b) {
-    return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon(a, b) && // dones't intersect other edges
+    return a.next.i !== b.i && a.prev.i !== b.i && !intersectsPolygon(a, b) && // doesn't intersect other edges
            (locallyInside(a, b) && locallyInside(b, a) && middleInside(a, b) && // locally visible
             (area(a.prev, a, b.prev) || area(a, b.prev, b)) || // does not create opposite-facing sectors
             equals(a, b) && area(a.prev, a, a.next) > 0 && area(b.prev, b, b.next) > 0); // special zero-length case
@@ -5885,10 +5996,10 @@ function equals(p1, p2) {
 
 // check if two segments intersect
 function intersects(p1, q1, p2, q2) {
-    var o1 = sign(area(p1, q1, p2));
-    var o2 = sign(area(p1, q1, q2));
-    var o3 = sign(area(p2, q2, p1));
-    var o4 = sign(area(p2, q2, q1));
+    const o1 = sign(area(p1, q1, p2));
+    const o2 = sign(area(p1, q1, q2));
+    const o3 = sign(area(p2, q2, p1));
+    const o4 = sign(area(p2, q2, q1));
 
     if (o1 !== o2 && o3 !== o4) return true; // general case
 
@@ -5911,7 +6022,7 @@ function sign(num) {
 
 // check if a polygon diagonal intersects any polygon segments
 function intersectsPolygon(a, b) {
-    var p = a;
+    let p = a;
     do {
         if (p.i !== a.i && p.next.i !== a.i && p.i !== b.i && p.next.i !== b.i &&
                 intersects(p, p.next, a, b)) return true;
@@ -5930,10 +6041,10 @@ function locallyInside(a, b) {
 
 // check if the middle point of a polygon diagonal is inside the polygon
 function middleInside(a, b) {
-    var p = a,
-        inside = false,
-        px = (a.x + b.x) / 2,
-        py = (a.y + b.y) / 2;
+    let p = a;
+    let inside = false;
+    const px = (a.x + b.x) / 2;
+    const py = (a.y + b.y) / 2;
     do {
         if (((p.y > py) !== (p.next.y > py)) && p.next.y !== p.y &&
                 (px < (p.next.x - p.x) * (py - p.y) / (p.next.y - p.y) + p.x))
@@ -5947,8 +6058,8 @@ function middleInside(a, b) {
 // link two polygon vertices with a bridge; if the vertices belong to the same ring, it splits polygon into two;
 // if one belongs to the outer ring and another to a hole, it merges it into a single ring
 function splitPolygon(a, b) {
-    var a2 = new Node(a.i, a.x, a.y),
-        b2 = new Node(b.i, b.x, b.y),
+    const a2 = createNode(a.i, a.x, a.y),
+        b2 = createNode(b.i, b.x, b.y),
         an = a.next,
         bp = b.prev;
 
@@ -5969,7 +6080,7 @@ function splitPolygon(a, b) {
 
 // create a node and optionally link it with previous one (in a circular doubly linked list)
 function insertNode(i, x, y, last) {
-    var p = new Node(i, x, y);
+    const p = createNode(i, x, y);
 
     if (!last) {
         p.prev = p;
@@ -5992,49 +6103,39 @@ function removeNode(p) {
     if (p.nextZ) p.nextZ.prevZ = p.prevZ;
 }
 
-function Node(i, x, y) {
-    // vertex index in coordinates array
-    this.i = i;
-
-    // vertex coordinates
-    this.x = x;
-    this.y = y;
-
-    // previous and next vertex nodes in a polygon ring
-    this.prev = null;
-    this.next = null;
-
-    // z-order curve value
-    this.z = null;
-
-    // previous and next nodes in z-order
-    this.prevZ = null;
-    this.nextZ = null;
-
-    // indicates whether this is a steiner point
-    this.steiner = false;
+function createNode(i, x, y) {
+    return {
+        i, // vertex index in coordinates array
+        x, y, // vertex coordinates
+        prev: null, // previous and next vertex nodes in a polygon ring
+        next: null,
+        z: 0, // z-order curve value
+        prevZ: null, // previous and next nodes in z-order
+        nextZ: null,
+        steiner: false // indicates whether this is a steiner point
+    };
 }
 
 // return a percentage difference between the polygon area and its triangulation area;
 // used to verify correctness of triangulation
-earcut.deviation = function (data, holeIndices, dim, triangles) {
-    var hasHoles = holeIndices && holeIndices.length;
-    var outerLen = hasHoles ? holeIndices[0] * dim : data.length;
+function deviation(data, holeIndices, dim, triangles) {
+    const hasHoles = holeIndices && holeIndices.length;
+    const outerLen = hasHoles ? holeIndices[0] * dim : data.length;
 
-    var polygonArea = Math.abs(signedArea(data, 0, outerLen, dim));
+    let polygonArea = Math.abs(signedArea(data, 0, outerLen, dim));
     if (hasHoles) {
-        for (var i = 0, len = holeIndices.length; i < len; i++) {
-            var start = holeIndices[i] * dim;
-            var end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
+        for (let i = 0, len = holeIndices.length; i < len; i++) {
+            const start = holeIndices[i] * dim;
+            const end = i < len - 1 ? holeIndices[i + 1] * dim : data.length;
             polygonArea -= Math.abs(signedArea(data, start, end, dim));
         }
     }
 
-    var trianglesArea = 0;
-    for (i = 0; i < triangles.length; i += 3) {
-        var a = triangles[i] * dim;
-        var b = triangles[i + 1] * dim;
-        var c = triangles[i + 2] * dim;
+    let trianglesArea = 0;
+    for (let i = 0; i < triangles.length; i += 3) {
+        const a = triangles[i] * dim;
+        const b = triangles[i + 1] * dim;
+        const c = triangles[i + 2] * dim;
         trianglesArea += Math.abs(
             (data[a] - data[c]) * (data[b + 1] - data[a + 1]) -
             (data[a] - data[b]) * (data[c + 1] - data[a + 1]));
@@ -6042,11 +6143,11 @@ earcut.deviation = function (data, holeIndices, dim, triangles) {
 
     return polygonArea === 0 && trianglesArea === 0 ? 0 :
         Math.abs((trianglesArea - polygonArea) / polygonArea);
-};
+}
 
 function signedArea(data, start, end, dim) {
-    var sum = 0;
-    for (var i = start, j = end - dim; i < end; i += dim) {
+    let sum = 0;
+    for (let i = start, j = end - dim; i < end; i += dim) {
         sum += (data[j] - data[i]) * (data[i + 1] + data[j + 1]);
         j = i;
     }
@@ -6054,22 +6155,25 @@ function signedArea(data, start, end, dim) {
 }
 
 // turn a polygon in a multi-dimensional array form (e.g. as in GeoJSON) into a form Earcut accepts
-earcut.flatten = function (data) {
-    var dim = data[0][0].length,
-        result = {vertices: [], holes: [], dimensions: dim},
-        holeIndex = 0;
+function flatten(data) {
+    const vertices = [];
+    const holes = [];
+    const dimensions = data[0][0].length;
+    let holeIndex = 0;
+    let prevLen = 0;
 
-    for (var i = 0; i < data.length; i++) {
-        for (var j = 0; j < data[i].length; j++) {
-            for (var d = 0; d < dim; d++) result.vertices.push(data[i][j][d]);
+    for (const ring of data) {
+        for (const p of ring) {
+            for (let d = 0; d < dimensions; d++) vertices.push(p[d]);
         }
-        if (i > 0) {
-            holeIndex += data[i - 1].length;
-            result.holes.push(holeIndex);
+        if (prevLen) {
+            holeIndex += prevLen;
+            holes.push(holeIndex);
         }
+        prevLen = ring.length;
     }
-    return result;
-};
+    return {vertices, holes, dimensions};
+}
 
 
 /***/ })

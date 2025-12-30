@@ -22,9 +22,11 @@ define(
 
     var   scene,FONTS,defaultColor,defaultOpac,naturalLetterHeight,curveSampleSize,Γ=Math.floor,hpb,hnm,csn,jur,wgd,debug;
     var   b128back,b128digits;
-    var   earcut                 = require("earcut");
+    var   earcutModule            = require("earcut");
+    var   earcut                 = earcutModule.default || earcutModule;
     var   B                      = {},
-          methodsList            = ["Vector2","Vector3","Path2","Curve3","Color3","SolidParticleSystem","PolygonMeshBuilder","CSG","StandardMaterial","Mesh"];
+          methodsList            = ["Vector2","Vector3","Path2","Curve3","Color3","SolidParticleSystem","PolygonMeshBuilder","StandardMaterial","Mesh"],
+          csgMethodsList         = ["CSG", "CSG2", "InitializeCSG2Async"];
     prepArray();
     // >>>>>  STEP 2 <<<<<
     hpb                          = HPB(codeList);
@@ -52,6 +54,31 @@ define(
     defaultOpac                  = 1;
     curveSampleSize              = 6;
     naturalLetterHeight          = 1000;
+
+    // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
+    //  CSG VERSION DETECTION  CSG VERSION DETECTION  CSG VERSION DETECTION
+    // Babylon 7.31+ deprecated CSG in favor of CSG2
+    var csgVersion               = null;   // 'CSG2', 'CSG', or null
+    var csgReady                 = false;  // For async CSG2 initialization
+
+    function detectCSGVersion(){
+      // Prefer CSG2 (Babylon 7.31+)
+      if(isObject(B.CSG2) && typeof B.InitializeCSG2Async === 'function'){
+        return 'CSG2';
+      }
+      // Fall back to legacy CSG
+      if(isObject(B.CSG) && typeof B.CSG.FromMesh === 'function'){
+        return 'CSG';
+      }
+      return null;
+    }
+
+    function isCSGReady(){
+      if(csgVersion === 'CSG2'){
+        return csgReady;
+      }
+      return csgVersion === 'CSG';
+    }
 
     // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
     //  SUPERCONSTRUCTOR  SUPERCONSTRUCTOR  SUPERCONSTRUCTOR 
@@ -201,6 +228,42 @@ define(
     if ( typeof module === 'object' && module.exports ) {
       module.exports             = Wrapper;
     }
+
+    // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
+    //  ASYNC FACTORY  ASYNC FACTORY  ASYNC FACTORY
+    // For Babylon 8+ which requires async CSG2 initialization
+    Wrapper.createAsync = async function(scene, preferences){
+      var prefs                  = isObject(preferences) ? preferences : {};
+
+      // Cache methods first
+      if(prefs.methods){
+        cacheMethods(prefs.methods);
+      }else if(typeof BABYLON === "object"){
+        cacheMethods(BABYLON);
+      }
+
+      // Initialize CSG2 if available and not ready
+      if(csgVersion === 'CSG2' && !csgReady){
+        if(typeof B.InitializeCSG2Async === 'function'){
+          await B.InitializeCSG2Async();
+          csgReady               = true;
+        }
+      }
+
+      // Return the configured Wrapper
+      return Wrapper(scene, preferences);
+    };
+
+    // Check if CSG is ready (useful for sync usage with manual CSG2 init)
+    Wrapper.isReady = function(){
+      return isCSGReady();
+    };
+
+    // Get current CSG version being used
+    Wrapper.getCSGVersion = function(){
+      return csgVersion;
+    };
+
     return Wrapper;
 
     //  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =
@@ -427,6 +490,20 @@ define(
 
       // ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~
       function punchHolesInShapes(shapesList,holesList){
+        // Validate CSG is available and initialized
+        if(csgVersion === 'CSG2' && !csgReady){
+          throw new Error(
+            "MeshWriter: CSG2 not initialized. " +
+            "Use 'await MeshWriter.createAsync(scene, prefs)' or call " +
+            "'await BABYLON.InitializeCSG2Async()' before creating MeshWriter."
+          );
+        }
+        if(csgVersion === null){
+          throw new Error(
+            "MeshWriter: No CSG implementation found. " +
+            "Ensure BABYLON.CSG or BABYLON.CSG2 is available."
+          );
+        }
         var letterMeshes         = [],j;
         for ( j=0 ; j<shapesList.length ; j++ ) {
           let shape              = shapesList[j];
@@ -440,13 +517,30 @@ define(
         return letterMeshes
       };
       function punchHolesInShape(shape,holes,letter,i){
-        var csgShape             = B.CSG.FromMesh(shape),k;
-        for ( k=0; k<holes.length ; k++ ) {
-          csgShape               = csgShape.subtract(B.CSG.FromMesh(holes[k]))
+        var meshName             = "Net-"+letter+i+"-"+weeid();
+        var resultMesh, csgShape, k;
+
+        if(csgVersion === 'CSG2'){
+          // CSG2 API (Babylon 7.31+)
+          csgShape               = B.CSG2.FromMesh(shape);
+          for ( k=0; k<holes.length ; k++ ) {
+            csgShape             = csgShape.subtract(B.CSG2.FromMesh(holes[k]));
+          }
+          // CSG2.toMesh signature: (name, scene, options)
+          resultMesh             = csgShape.toMesh(meshName, scene, {});
+        }else{
+          // Legacy CSG API (Babylon < 7.31)
+          csgShape               = B.CSG.FromMesh(shape);
+          for ( k=0; k<holes.length ; k++ ) {
+            csgShape             = csgShape.subtract(B.CSG.FromMesh(holes[k]));
+          }
+          // Legacy CSG.toMesh signature: (name, material, scene)
+          resultMesh             = csgShape.toMesh(meshName, null, scene);
         }
+
         holes.forEach(h=>h.dispose());
         shape.dispose();
-        return csgShape.toMesh("Net-"+letter+i+"-"+weeid(), null, scene)
+        return resultMesh;
       };
     };
 
@@ -590,6 +684,7 @@ define(
     function cacheMethods(src){
       var incomplete             = false;
       if(isObject(src)){
+        // Cache core methods (required)
         methodsList.forEach(function(meth){
           if(isObject(src[meth])){
             B[meth]              = src[meth]
@@ -597,6 +692,14 @@ define(
             incomplete           = meth
           }
         });
+        // Cache CSG methods (optional - auto-detect which is available)
+        csgMethodsList.forEach(function(meth){
+          if(src[meth] !== undefined){
+            B[meth]              = src[meth]
+          }
+        });
+        // Detect which CSG version is available
+        csgVersion               = detectCSGVersion();
         if(!incomplete){supplementCurveFunctions()}
       }
       if(isString(incomplete)){
@@ -610,37 +713,38 @@ define(
     // 
     function supplementCurveFunctions(){
       if ( isObject ( B.Path2 ) ) {
-        if ( !B.Path2.prototype.addQuadraticCurveTo ) {
-          B.Path2.prototype.addQuadraticCurveTo = function(redX, redY, blueX, blueY){
-            var points           = this.getPoints();
-            var lastPoint        = points[points.length - 1];
-            var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
-            var control          = new B.Vector3(redX, redY, 0);
-            var destination      = new B.Vector3(blueX, blueY, 0);
-            var nb_of_points     = curveSampleSize;
-            var curve            = B.Curve3.CreateQuadraticBezier(origin, control, destination, nb_of_points);
-            var curvePoints      = curve.getPoints();
-            for(var i=1; i<curvePoints.length; i++){
-              this.addLineTo(curvePoints[i].x, curvePoints[i].y);
-            }
+        // Always override curve functions to ensure consistent, optimized segment count
+        // Native Babylon 6+ uses 36 segments which causes significant slowdown
+        // MeshWriter uses curveSampleSize (6) for better performance
+        B.Path2.prototype.addQuadraticCurveTo = function(redX, redY, blueX, blueY){
+          var points           = this.getPoints();
+          var lastPoint        = points[points.length - 1];
+          var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
+          var control          = new B.Vector3(redX, redY, 0);
+          var destination      = new B.Vector3(blueX, blueY, 0);
+          var nb_of_points     = curveSampleSize;
+          var curve            = B.Curve3.CreateQuadraticBezier(origin, control, destination, nb_of_points);
+          var curvePoints      = curve.getPoints();
+          for(var i=1; i<curvePoints.length; i++){
+            this.addLineTo(curvePoints[i].x, curvePoints[i].y);
           }
-        }
-        if ( !B.Path2.prototype.addCubicCurveTo ) {
-          B.Path2.prototype.addCubicCurveTo = function(redX, redY, greenX, greenY, blueX, blueY){
-            var points           = this.getPoints();
-            var lastPoint        = points[points.length - 1];
-            var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
-            var control1         = new B.Vector3(redX, redY, 0);
-            var control2         = new B.Vector3(greenX, greenY, 0);
-            var destination      = new B.Vector3(blueX, blueY, 0);
-            var nb_of_points     = Math.floor(0.3+curveSampleSize*1.5);
-            var curve            = B.Curve3.CreateCubicBezier(origin, control1, control2, destination, nb_of_points);
-            var curvePoints      = curve.getPoints();
-            for(var i=1; i<curvePoints.length; i++){
-              this.addLineTo(curvePoints[i].x, curvePoints[i].y);
-            }
+          return this;  // Return this for method chaining
+        };
+        B.Path2.prototype.addCubicCurveTo = function(redX, redY, greenX, greenY, blueX, blueY){
+          var points           = this.getPoints();
+          var lastPoint        = points[points.length - 1];
+          var origin           = new B.Vector3(lastPoint.x, lastPoint.y, 0);
+          var control1         = new B.Vector3(redX, redY, 0);
+          var control2         = new B.Vector3(greenX, greenY, 0);
+          var destination      = new B.Vector3(blueX, blueY, 0);
+          var nb_of_points     = Math.floor(0.3+curveSampleSize*1.5);
+          var curve            = B.Curve3.CreateCubicBezier(origin, control1, control2, destination, nb_of_points);
+          var curvePoints      = curve.getPoints();
+          for(var i=1; i<curvePoints.length; i++){
+            this.addLineTo(curvePoints[i].x, curvePoints[i].y);
           }
-        }
+          return this;  // Return this for method chaining
+        };
       }
     }
     //  ~  -  =  ~  -  =  ~  -  =  ~  -  =  ~  -  =  

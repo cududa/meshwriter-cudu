@@ -2,6 +2,38 @@
 
 Generate letters in BABYLON meshes.
 
+## Babylon.js Version Compatibility
+
+MeshWriter supports both legacy Babylon.js (< 7.31) and modern Babylon.js 8+.
+
+| Babylon Version | API | Notes |
+|-----------------|-----|-------|
+| < 7.31 | `MeshWriter(scene, prefs)` | Sync, uses legacy CSG |
+| 7.31+ / 8.0+ | `await MeshWriter.createAsync(scene, prefs)` | Async, uses CSG2 |
+
+### Async Usage (Babylon 8+)
+
+For Babylon.js 8 and later, use the async factory:
+
+```javascript
+// Async initialization (required for Babylon 8+)
+const Writer = await BABYLON.MeshWriter.createAsync(scene, {scale: 1});
+const text = new Writer("Hello", {"letter-height": 50});
+```
+
+Alternatively, initialize CSG2 yourself:
+
+```javascript
+await BABYLON.InitializeCSG2Async();
+const Writer = BABYLON.MeshWriter(scene, {scale: 1});
+const text = new Writer("Hello", {"letter-height": 50});
+```
+
+### Helper Methods
+
+- `MeshWriter.isReady()` - Check if CSG is initialized
+- `MeshWriter.getCSGVersion()` - Returns 'CSG2', 'CSG', or null
+
 ## Javascript Calls And Parameters
 
 ### Usage Summary
@@ -196,19 +228,57 @@ The required methods are put in a single object ('methodsObj') which is handed t
 
 ### Required BABYLON Methods
 
-Collect these methods and put them on a single object and then hand that to MeshWriter as shown above.&nbsp;  
-&bull; Vector2 &nbsp;  
-&bull; Vector3 &nbsp;  
-&bull; Path2 &nbsp;  
-&bull; Curve3 &nbsp;  
-&bull; Color3 &nbsp;  
-&bull; SolidParticleSystem &nbsp;  
-&bull; PolygonMeshBuilder &nbsp;  
-&bull; CSG &nbsp;  
-&bull; StandardMaterial &nbsp;  
-&bull; Mesh &nbsp;  
+Collect these methods and put them on a single object and then hand that to MeshWriter as shown above.&nbsp;
 
-### A recommended recipe
+**Core Methods (always required):**
+&bull; Vector2 &nbsp;
+&bull; Vector3 &nbsp;
+&bull; Path2 &nbsp;
+&bull; Curve3 &nbsp;
+&bull; Color3 &nbsp;
+&bull; SolidParticleSystem &nbsp;
+&bull; PolygonMeshBuilder &nbsp;
+&bull; StandardMaterial &nbsp;
+&bull; Mesh &nbsp;
+
+**CSG Methods (one set required):**
+
+For Babylon.js 8+ (recommended):
+&bull; CSG2 &nbsp;
+&bull; InitializeCSG2Async &nbsp;
+
+For Babylon.js < 7.31:
+&bull; CSG &nbsp;
+
+### A recommended recipe (Babylon 8+)
+
+For modern Babylon.js 8+, use CSG2:
+
+```javascript
+// Collect the methods
+import { Vector2, Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Path2, Curve3 } from "@babylonjs/core/Maths/math.path";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { CSG2, InitializeCSG2Async } from "@babylonjs/core/Meshes/csg2";
+import { PolygonMeshBuilder } from "@babylonjs/core/Meshes/polygonMesh";
+import { SolidParticleSystem } from "@babylonjs/core/Particles/solidParticleSystem";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+
+// Put them in an object
+const methodsObj = {
+  Vector2, Vector3, Path2, Curve3, Color3,
+  SolidParticleSystem, PolygonMeshBuilder,
+  CSG2, InitializeCSG2Async,
+  StandardMaterial, Mesh
+};
+
+// Async initialization for Babylon 8+
+import MeshWriter from "meshwriter";
+const Writer = await MeshWriter.createAsync(scene, {scale: 1, methods: methodsObj});
+```
+
+### A recommended recipe (Legacy Babylon)
 
 A knowledgeable source suggested this incantation to collect all the methods.&nbsp;
 If you find an error in this, please let us know, pronto.
