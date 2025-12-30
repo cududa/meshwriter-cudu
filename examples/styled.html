@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MeshWriter - Styled Text Example</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="info">
+        <strong>MeshWriter Styled Text</strong><br>
+        Multiple text styles with custom colors
+    </div>
+
+    <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <!-- Earcut -->
+    <script src="https://unpkg.com/earcut@3.0.2/dist/earcut.min.js"></script>
+
+    <!-- MeshWriter -->
+    <script src="../dist/meshwriter.min.js"></script>
+
+    <script>
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+
+        const createScene = async function() {
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.15);
+
+            // Camera
+            const camera = new BABYLON.ArcRotateCamera(
+                "camera",
+                Math.PI / 2,
+                Math.PI / 2.5,
+                250,
+                new BABYLON.Vector3(0, 20, 0),
+                scene
+            );
+            camera.attachControl(canvas, true);
+
+            // Lights
+            const hemiLight = new BABYLON.HemisphericLight(
+                "hemiLight",
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+            hemiLight.intensity = 0.6;
+
+            const dirLight = new BABYLON.DirectionalLight(
+                "dirLight",
+                new BABYLON.Vector3(-0.5, -1, -0.5),
+                scene
+            );
+            dirLight.intensity = 0.8;
+
+            // Initialize MeshWriter
+            let Writer;
+            if (BABYLON.MeshWriter.createAsync) {
+                Writer = await BABYLON.MeshWriter.createAsync(scene, { scale: 1 });
+            } else {
+                Writer = BABYLON.MeshWriter(scene, { scale: 1 });
+            }
+
+            // Title text - large blue
+            new Writer("BABYLON JS", {
+                "anchor": "center",
+                "letter-height": 25,
+                "letter-thickness": 4,
+                "color": "#4488FF",
+                "colors": {
+                    "diffuse": "#FFFFFF",
+                    "specular": "#444444",
+                    "ambient": "#222222",
+                    "emissive": "#4488FF"
+                },
+                "position": { "x": 0, "y": 50, "z": 0 }
+            });
+
+            // Subtitle - medium orange
+            new Writer("MeshWriter Demo", {
+                "anchor": "center",
+                "letter-height": 15,
+                "letter-thickness": 2,
+                "color": "#FF8844",
+                "colors": {
+                    "diffuse": "#FFFFFF",
+                    "specular": "#666666",
+                    "ambient": "#333333",
+                    "emissive": "#FF8844"
+                },
+                "position": { "x": 0, "y": 25, "z": 0 }
+            });
+
+            // Description - small green
+            new Writer("3D Text in WebGL", {
+                "anchor": "center",
+                "letter-height": 10,
+                "letter-thickness": 1.5,
+                "color": "#44FF88",
+                "position": { "x": 0, "y": 5, "z": 0 }
+            });
+
+            // Footer - small gray
+            new Writer("Drag to rotate | Scroll to zoom", {
+                "anchor": "center",
+                "letter-height": 6,
+                "letter-thickness": 1,
+                "color": "#888888",
+                "position": { "x": 0, "y": -15, "z": 0 }
+            });
+
+            return scene;
+        };
+
+        createScene().then(scene => {
+            engine.runRenderLoop(function() {
+                scene.render();
+            });
+        });
+
+        window.addEventListener("resize", function() {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>

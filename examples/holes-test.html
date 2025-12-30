@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MeshWriter - Holes Test (CSG2 Verification)</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        #status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="info">
+        <strong>MeshWriter Holes Test</strong><br>
+        Tests letters with holes: B, O, 8, %, @<br><br>
+        <em>This verifies CSG2 boolean operations work correctly.
+        If letters appear garbled or filled-in, CSG is not working.</em>
+    </div>
+    <div id="status">Loading...</div>
+
+    <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <!-- Earcut (required for PolygonMeshBuilder) -->
+    <script src="https://unpkg.com/earcut@3.0.2/dist/earcut.min.js"></script>
+
+    <!-- MeshWriter (local build) -->
+    <script src="../dist/meshwriter.min.js"></script>
+
+    <script>
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+        const statusEl = document.getElementById("status");
+
+        function log(msg) {
+            console.log(msg);
+            statusEl.innerHTML += msg + "<br>";
+        }
+
+        const createScene = async function() {
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.15, 0.15, 0.2);
+
+            // Camera
+            const camera = new BABYLON.ArcRotateCamera(
+                "camera",
+                Math.PI / 2,
+                Math.PI / 2.5,
+                200,
+                new BABYLON.Vector3(0, 0, 0),
+                scene
+            );
+            camera.attachControl(canvas, true);
+
+            // Lights
+            const light1 = new BABYLON.HemisphericLight(
+                "light1",
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+            light1.intensity = 0.7;
+
+            const light2 = new BABYLON.DirectionalLight(
+                "light2",
+                new BABYLON.Vector3(-1, -1, -1),
+                scene
+            );
+            light2.intensity = 0.5;
+
+            statusEl.innerHTML = "";
+            log("Babylon.js version: " + BABYLON.Engine.Version);
+
+            // Initialize MeshWriter
+            let Writer;
+            try {
+                if (BABYLON.MeshWriter.createAsync) {
+                    log("Using async MeshWriter.createAsync()...");
+                    Writer = await BABYLON.MeshWriter.createAsync(scene, { scale: 1 });
+                    log("MeshWriter initialized (async)");
+                } else {
+                    log("Using sync MeshWriter()...");
+                    Writer = BABYLON.MeshWriter(scene, { scale: 1 });
+                    log("MeshWriter initialized (sync)");
+                }
+
+                const csgVersion = BABYLON.MeshWriter.getCSGVersion ? BABYLON.MeshWriter.getCSGVersion() : "unknown";
+                log("CSG Version: " + csgVersion);
+                const isReady = BABYLON.MeshWriter.isReady ? BABYLON.MeshWriter.isReady() : "unknown";
+                log("CSG Ready: " + isReady);
+
+            } catch (e) {
+                log("ERROR: " + e.message);
+                throw e;
+            }
+
+            // Test letters with holes
+            const testStrings = [
+                { text: "B O 8 % @", y: 30, color: "#88AAFF", label: "Letters with holes" },
+                { text: "ABCDEFGH", y: 0, color: "#FFAA88", label: "Mixed letters" },
+                { text: "0123456789", y: -30, color: "#88FFAA", label: "Numbers" }
+            ];
+
+            for (const item of testStrings) {
+                try {
+                    log("Creating: " + item.label);
+                    const text = new Writer(item.text, {
+                        "anchor": "center",
+                        "letter-height": 20,
+                        "letter-thickness": 3,
+                        "color": item.color,
+                        "position": {
+                            "x": 0,
+                            "y": item.y,
+                            "z": 0
+                        }
+                    });
+                    log("  OK");
+                } catch (e) {
+                    log("  FAILED: " + e.message);
+                }
+            }
+
+            log("---");
+            log("Done! Inspect visually.");
+
+            return scene;
+        };
+
+        createScene().then(scene => {
+            engine.runRenderLoop(function() {
+                scene.render();
+            });
+        }).catch(e => {
+            log("Scene creation failed: " + e.message);
+        });
+
+        window.addEventListener("resize", function() {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>

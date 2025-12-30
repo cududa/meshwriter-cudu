@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MeshWriter - Animated SPS Example</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="info">
+        <strong>MeshWriter Animated SPS</strong><br>
+        Each letter rotates independently using SolidParticleSystem
+    </div>
+
+    <!-- Babylon.js -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <!-- Earcut -->
+    <script src="https://unpkg.com/earcut@3.0.2/dist/earcut.min.js"></script>
+
+    <!-- MeshWriter -->
+    <script src="../dist/meshwriter.min.js"></script>
+
+    <script>
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+
+        const createScene = async function() {
+            const scene = new BABYLON.Scene(engine);
+            scene.clearColor = new BABYLON.Color3(0.05, 0.05, 0.1);
+
+            // Camera
+            const camera = new BABYLON.ArcRotateCamera(
+                "camera",
+                Math.PI / 2,
+                Math.PI / 2.2,
+                180,
+                new BABYLON.Vector3(0, 0, 0),
+                scene
+            );
+            camera.attachControl(canvas, true);
+
+            // Lights
+            const hemiLight = new BABYLON.HemisphericLight(
+                "hemiLight",
+                new BABYLON.Vector3(0, 1, 0),
+                scene
+            );
+            hemiLight.intensity = 0.5;
+
+            const dirLight = new BABYLON.DirectionalLight(
+                "dirLight",
+                new BABYLON.Vector3(-1, -2, -1),
+                scene
+            );
+            dirLight.intensity = 0.7;
+
+            // Constants
+            const SCALE = 1;
+            const TEXT_SIZE = 20;
+            const TEXT_THICKNESS = 4;
+
+            // Initialize MeshWriter
+            let Writer;
+            if (BABYLON.MeshWriter.createAsync) {
+                Writer = await BABYLON.MeshWriter.createAsync(scene, {
+                    scale: SCALE,
+                    defaultFont: "Helvetica"
+                });
+            } else {
+                Writer = BABYLON.MeshWriter(scene, {
+                    scale: SCALE,
+                    defaultFont: "Helvetica"
+                });
+            }
+
+            // Create animated text
+            const textMesh = new Writer("BABYLON JS", {
+                "font-family": "Helvetica",
+                "anchor": "center",
+                "letter-height": TEXT_SIZE,
+                "letter-thickness": TEXT_THICKNESS,
+                "color": "#FF00FF",
+                "colors": {
+                    "diffuse": "#F0F0F0",
+                    "specular": "#444444",
+                    "ambient": "#222222",
+                    "emissive": "#FF00FF"
+                },
+                "position": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0
+                }
+            });
+
+            // Get the SPS for animation
+            const SPS = textMesh.getSPS();
+
+            if (SPS) {
+                // Custom update function - each letter rotates
+                SPS.updateParticle = function(particle) {
+                    // Rotate each letter around X axis
+                    particle.rotation.x += 0.02;
+                    // Add slight wave motion
+                    particle.position.y = Math.sin(Date.now() * 0.002 + particle.idx * 0.5) * 5;
+                    return particle;
+                };
+
+                // Register animation loop
+                scene.registerBeforeRender(function() {
+                    SPS.setParticles();
+                });
+            }
+
+            // Add a second static text for comparison
+            new Writer("Static Text Below", {
+                "anchor": "center",
+                "letter-height": 8,
+                "letter-thickness": 1,
+                "color": "#44AAFF",
+                "position": { "x": 0, "y": -40, "z": 0 }
+            });
+
+            return scene;
+        };
+
+        createScene().then(scene => {
+            engine.runRenderLoop(function() {
+                scene.render();
+            });
+        });
+
+        window.addEventListener("resize", function() {
+            engine.resize();
+        });
+    </script>
+</body>
+</html>
