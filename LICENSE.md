@@ -1,5 +1,8 @@
-Copyright (c) 2018, 2019, 2020, 2021, 2022, 2023 Brian Button
-Adapted to BABYLON.js by Brian Button
+Copyright (c) 2018-2023 Brian Button
+Copyright (c) 2024-2025 Cullen Dudas
+
+Originally adapted to BABYLON.js by Brian Button
+Additional modifications by Cullen Dudas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
