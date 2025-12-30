@@ -1,12 +1,9 @@
-//  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS 
-//
-//
-
-define(
-  [],
-  function(){
-
-    return function(codeList){
+/**
+ * WebGL-Dings Font for MeshWriter
+ * Symbol/dingbat font
+ * ES Module format
+ */
+export default function(codeList) {
 
       var wgd={reverseHoles:false,reverseShapes:true},nbsp="\u00A0";
       wgd["A"]                     = {
@@ -258,6 +255,4 @@ define(
       wgd[" "]                     = wgd[nbsp];
 
       return wgd;
-    }
-  }
-);
+}

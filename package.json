@@ -1,31 +1,71 @@
 {
-  "name": "meshwriter",
-  "version": "2.0.0",
-  "description": "Generate text in BABYLON meshes",
-  "main": "./dist/meshwriter.min.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/briantbutton/meshwriter"
-  },
-  "keywords": [
-    "babylonjs",
-    "babylon",
-    "meshwriter"
-  ],
-  "author": "Brian T Button",
-  "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {
-    "earcut": "^3.0.2",
-    "webpack": "^4.32.2",
-    "webpack-cli": "^3.3.2"
-  },
-  "bugs": {
-    "url": "https://github.com/briantbutton/meshwriter/issues"
-  },
-  "homepage": "https://github.com/briantbutton/meshwriter#readme"
+    "name": "meshwriter",
+    "version": "3.0.0",
+    "description": "Generate text in BABYLON meshes",
+    "type": "module",
+    "main": "./dist/meshwriter.cjs.js",
+    "module": "./dist/meshwriter.esm.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/meshwriter.esm.js",
+            "require": "./dist/meshwriter.cjs.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./fonts/*": "./fonts/*.js",
+        "./fonts": "./fonts/index.js"
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build:webpack": "webpack",
+        "build:rollup": "rollup -c",
+        "build:types": "tsc",
+        "build": "npm run build:rollup && npm run build:types",
+        "dev": "rollup -c -w"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/briantbutton/meshwriter"
+    },
+    "keywords": [
+        "babylonjs",
+        "babylon",
+        "meshwriter",
+        "3d-text",
+        "webgl"
+    ],
+    "author": "Brian T Button",
+    "license": "MIT",
+    "peerDependencies": {
+        "@babylonjs/core": ">=6.0.0",
+        "earcut": ">=2.0.0"
+    },
+    "peerDependenciesMeta": {
+        "@babylonjs/core": {
+            "optional": false
+        },
+        "earcut": {
+            "optional": false
+        }
+    },
+    "devDependencies": {
+        "@babylonjs/core": "^8.0.0",
+        "@rollup/plugin-commonjs": "^28.0.0",
+        "@rollup/plugin-node-resolve": "^16.0.0",
+        "@rollup/plugin-terser": "^0.4.0",
+        "earcut": "^3.0.2",
+        "rollup": "^4.0.0",
+        "typescript": "^5.0.0",
+        "webpack": "^4.32.2",
+        "webpack-cli": "^3.3.2"
+    },
+    "files": [
+        "dist",
+        "fonts",
+        "src"
+    ],
+    "bugs": {
+        "url": "https://github.com/briantbutton/meshwriter/issues"
+    },
+    "homepage": "https://github.com/briantbutton/meshwriter#readme"
 }

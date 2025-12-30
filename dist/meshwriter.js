@@ -5334,15 +5334,16 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  JURA  JURA  
 
 /***/ }),
 /* 6 */
-/***/ (function(module, exports, __webpack_require__) {
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS  WEBGL-DINGS 
-//
-//
-
-!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = (function(){
-
-    return function(codeList){
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/**
+ * WebGL-Dings Font for MeshWriter
+ * Symbol/dingbat font
+ * ES Module format
+ */
+/* harmony default export */ __webpack_exports__["default"] = (function(codeList) {
 
       var wgd={reverseHoles:false,reverseShapes:true},nbsp="\u00A0";
       wgd["A"]                     = {
@@ -5594,9 +5595,7 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//  WEBGL-DINGS 
       wgd[" "]                     = wgd[nbsp];
 
       return wgd;
-    }
-  }).apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+});
 
 /***/ }),
 /* 7 */
