@@ -147,6 +147,9 @@
     // Babylon 7.31+ deprecated CSG in favor of CSG2
     var csgVersion               = null;   // 'CSG2', 'CSG', or null
     var csgReady                 = false;  // For async CSG2 initialization
+    var csgReadyListeners        = [];
+    var externalCSGInitializer   = null;
+    var externalCSGReadyCheck    = null;
 
     function detectCSGVersion(){
       // Prefer CSG2 (Babylon 7.31+)
@@ -160,61 +163,66 @@
       return null;
     }
 
+    function markCSGInitialized(){
+      if(csgReady){
+        return;
+      }
+      csgReady                 = true;
+      if(csgReadyListeners.length){
+        csgReadyListeners.splice(0).forEach(function(listener){
+          try{
+            listener();
+          }catch(err){
+            if(typeof console !== "undefined" && typeof console.error === "function"){
+              console.error("MeshWriter: onCSGReady listener failed", err);
+            }
+          }
+        });
+      }
+    }
+
     function isCSGReady(){
       if(csgVersion === 'CSG2'){
+        refreshCSGReadyState();
         return csgReady;
       }
       return csgVersion === 'CSG';
     }
 
-    function markCSGInitialized(){
-      csgReady                 = true;
-    }
-
-    function wrapInitializeCSG2(source){
-      if(!isObject(source)){
+    function refreshCSGReadyState(){
+      if(csgVersion !== 'CSG2' || csgReady){
         return;
       }
-      var initFn               = source.InitializeCSG2Async;
-      if(typeof initFn !== "function"){
-        return;
-      }
-      // Already wrapped somewhere else - reuse wrapper
-      if(initFn.__meshWriterWrapper){
-        source.InitializeCSG2Async = initFn.__meshWriterWrapper;
-        B.InitializeCSG2Async     = initFn.__meshWriterWrapper;
-        return;
-      }
-      if(initFn.__meshWriterWrapped){
-        B.InitializeCSG2Async     = initFn;
-        return;
-      }
-      var wrappedInit          = function(){
-        var result             = initFn.apply(this, arguments);
-        if(isPromiseLike(result)){
-          return result.then(function(value){
-            markCSGInitialized();
-            return value;
-          });
-        }
+      if(runCSGReadyCheck()){
         markCSGInitialized();
-        return result;
-      };
-      wrappedInit.__meshWriterWrapped = true;
-      wrappedInit.__meshWriterOriginal = initFn;
-      initFn.__meshWriterWrapper = wrappedInit;
-      source.InitializeCSG2Async = wrappedInit;
-      B.InitializeCSG2Async     = wrappedInit;
+        return;
+      }
+      if(runCSGReadyCheck(B)){
+        markCSGInitialized();
+        return;
+      }
+      if(typeof BABYLON === "object" && BABYLON !== B && runCSGReadyCheck(BABYLON)){
+        markCSGInitialized();
+      }
     }
 
-    function checkExternalCSGReady(source){
-      if(isObject(source) && typeof source.IsCSG2Ready === "function"){
-        if(source.IsCSG2Ready()){
-          markCSGInitialized();
-          return true;
+    function runCSGReadyCheck(source){
+      if(typeof externalCSGReadyCheck === "function"){
+        try{
+          if(externalCSGReadyCheck()){
+            return true;
+          }
+        }catch(err){
+          if(typeof console !== "undefined" && typeof console.warn === "function"){
+            console.warn("MeshWriter: external CSG ready check failed", err);
+          }
         }
       }
-      return false;
+      return isExternalCSGReady(source);
+    }
+
+    function isExternalCSGReady(source){
+      return isObject(source) && typeof source.IsCSG2Ready === "function" && !!source.IsCSG2Ready();
     }
 
     // *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-* *-*=*  *=*-*
@@ -225,14 +233,13 @@
 
     var Wrapper                  = function(){
 
-    var proto,defaultFont,scale,meshOrigin,flattenZ,preferences;
+    var proto,defaultFont,scale,meshOrigin,preferences;
 
       scene                      = arguments[0];
       preferences                = makePreferences(arguments);
 
       defaultFont                = isObject(FONTS[preferences.defaultFont]) ? preferences.defaultFont : "HelveticaNeue-Medium";
       meshOrigin                 = preferences.meshOrigin==="fontOrigin" ? preferences.meshOrigin : "letterCenter";
-      flattenZ                   = preferences.flattenZ !== false;
       scale                      = isNumber(preferences.scale) ? preferences.scale : 1;
       debug                      = isBoolean(preferences.debug) ? preferences.debug : false;
 
@@ -371,40 +378,76 @@
     //  ASYNC FACTORY  ASYNC FACTORY  ASYNC FACTORY
     // For Babylon 8+ which requires async CSG2 initialization
     Wrapper.createAsync = async function(scene, preferences){
-      var prefs                  = isObject(preferences) ? preferences : {};
+      var prefs                  = isObject(preferences) ? Object.assign({}, preferences) : {};
+      var cachedSource           = null;
 
       // Cache methods first
       if(prefs.methods){
         cacheMethods(prefs.methods);
+        cachedSource            = prefs.methods;
       }else if(typeof BABYLON === "object"){
         cacheMethods(BABYLON);
+        cachedSource            = BABYLON;
+      }
+      if(cachedSource){
+        prefs.__meshWriterMethodsCached = true;
       }
 
       // Initialize CSG2 if available and not ready
-      if(csgVersion === 'CSG2' && !csgReady){
-        if(typeof B.InitializeCSG2Async === 'function'){
-          await B.InitializeCSG2Async();
-          markCSGInitialized();
+      if(csgVersion === 'CSG2' && !isCSGReady()){
+        var initializer          = externalCSGInitializer || B.InitializeCSG2Async;
+        if(typeof initializer !== "function"){
+          throw new Error("MeshWriter: No CSG2 initializer provided. Use MeshWriter.setCSGInitializer or include BABYLON.InitializeCSG2Async.");
         }
+        var initContext          = externalCSGInitializer ? undefined : (typeof BABYLON === "object" ? BABYLON : B);
+        var initResult           = initializer.call(initContext);
+        if(isPromiseLike(initResult)){
+          await initResult;
+        }
+        markCSGInitialized();
       }
 
       // Return the configured Wrapper
-      return Wrapper(scene, preferences);
+      return Wrapper(scene, prefs);
     };
 
     // Check if CSG is ready (useful for sync usage with manual CSG2 init)
     Wrapper.isReady = function(){
-      if(!csgReady && csgVersion === 'CSG2'){
-        if(typeof BABYLON === "object"){
-          checkExternalCSGReady(BABYLON);
-        }
-      }
       return isCSGReady();
     };
 
     // Get current CSG version being used
     Wrapper.getCSGVersion = function(){
       return csgVersion;
+    };
+
+    // Allow external engines to control/observe CSG readiness
+    Wrapper.setCSGInitializer = function(initializer){
+      if(typeof initializer === "function"){
+        externalCSGInitializer = initializer;
+      }
+    };
+
+    Wrapper.setCSGReadyCheck = function(checkFn){
+      if(typeof checkFn === "function"){
+        externalCSGReadyCheck = checkFn;
+        refreshCSGReadyState();
+      }
+    };
+
+    Wrapper.onCSGReady = function(listener){
+      if(typeof listener !== "function"){
+        return;
+      }
+      if(isCSGReady()){
+        listener();
+      }else{
+        csgReadyListeners.push(listener);
+      }
+    };
+
+    Wrapper.markCSGReady = function(){
+      markCSGInitialized();
     };
 
     return Wrapper;
@@ -634,11 +677,12 @@
       // ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~  ~
       function punchHolesInShapes(shapesList,holesList){
         // Validate CSG is available and initialized
-        if(csgVersion === 'CSG2' && !csgReady){
+        if(csgVersion === 'CSG2' && !isCSGReady()){
           throw new Error(
             "MeshWriter: CSG2 not initialized. " +
-            "Use 'await MeshWriter.createAsync(scene, prefs)' or call " +
-            "'await BABYLON.InitializeCSG2Async()' before creating MeshWriter."
+            "Use 'await MeshWriter.createAsync(scene, prefs)', call " +
+            "'await BABYLON.InitializeCSG2Async()', or configure " +
+            "MeshWriter.setCSGInitializer before creating MeshWriter."
           );
         }
         if(csgVersion === null){
@@ -666,30 +710,19 @@
       };
       function punchHolesInShape(shape,holes,letter,i){
         var meshName             = "Net-"+letter+i+"-"+weeid();
-        var resultMesh, csgShape, k;
-
+        var csgLib               = csgVersion === 'CSG2' ? B.CSG2 : B.CSG;
+        var csgShape             = csgLib.FromMesh(shape);
+        for ( var k=0; k<holes.length ; k++ ) {
+          csgShape               = csgShape.subtract(csgLib.FromMesh(holes[k]));
+        }
+        var resultMesh           = csgVersion === 'CSG2'
+          ? csgShape.toMesh(meshName, scene, { centerMesh: false })
+          : csgShape.toMesh(meshName, null, scene);
         if(csgVersion === 'CSG2'){
-          // CSG2 API (Babylon 7.31+) - built on Manifold
-          csgShape               = B.CSG2.FromMesh(shape);
-          for ( k=0; k<holes.length ; k++ ) {
-            csgShape             = csgShape.subtract(B.CSG2.FromMesh(holes[k]));
-          }
-          // CSG2.toMesh signature: (name, scene, options)
-          // centerMesh: false prevents CSG2 from centering the result, preserving original Y extent
-          resultMesh             = csgShape.toMesh(meshName, scene, { centerMesh: false });
           // CSG2/Manifold produces opposite face winding compared to legacy CSG
           // Flip faces to match expected orientation
           resultMesh.flipFaces();
-        }else{
-          // Legacy CSG API (Babylon < 7.31)
-          csgShape               = B.CSG.FromMesh(shape);
-          for ( k=0; k<holes.length ; k++ ) {
-            csgShape             = csgShape.subtract(B.CSG.FromMesh(holes[k]));
-          }
-          // Legacy CSG.toMesh signature: (name, material, scene)
-          resultMesh             = csgShape.toMesh(meshName, null, scene);
         }
-
         holes.forEach(h=>h.dispose());
         shape.dispose();
         return resultMesh;
@@ -827,7 +860,9 @@
         if(isBoolean(p.debug)){
           prefs.debug            = p.debug
         }
-        cacheMethods(p.methods);
+        if(p.methods && !p.__meshWriterMethodsCached){
+          cacheMethods(p.methods);
+        }
         return prefs
       }else{
         return { defaultFont: args[2] , scale: args[1] , debug: false }
@@ -853,14 +888,14 @@
         // Detect which CSG version is available
         csgVersion               = detectCSGVersion();
         if(csgVersion === 'CSG2'){
-          wrapInitializeCSG2(src);
-          var ready              = checkExternalCSGReady(src);
-          if(!ready && typeof BABYLON === "object" && BABYLON !== src){
-            ready                = checkExternalCSGReady(BABYLON);
+          csgReady               = false;
+          if(runCSGReadyCheck(src)){
+            markCSGInitialized();
+          }else if(typeof BABYLON === "object" && BABYLON !== src && runCSGReadyCheck(BABYLON)){
+            markCSGInitialized();
           }
-          csgReady               = !!ready;
         }else if(csgVersion === 'CSG'){
-          csgReady               = true;
+          markCSGInitialized();
         }else{
           csgReady               = false;
         }

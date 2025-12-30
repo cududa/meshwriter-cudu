@@ -126,5 +126,15 @@ const Writer = await BABYLON.MeshWriter.createAsync(scene, { scale: 1 });
 BABYLON.MeshWriter.getCSGVersion()  // Returns 'CSG2', 'CSG', or null
 BABYLON.MeshWriter.isReady()        // Returns true if CSG is initialized</pre>
 
+    <h2>Custom CSG Initialization</h2>
+
+    <p>If your build tree-shakes Babylon globals, register an initializer and readiness check before calling <code>createAsync</code>:</p>
+    <pre>import { InitializeCSG2Async, IsCSG2Ready } from "@babylonjs/core/Meshes/csg2";
+
+BABYLON.MeshWriter.setCSGInitializer(() => InitializeCSG2Async(scene));
+BABYLON.MeshWriter.setCSGReadyCheck(() => IsCSG2Ready());
+
+const Writer = await BABYLON.MeshWriter.createAsync(scene, { methods: methodsObj });</pre>
+
 </body>
 </html>

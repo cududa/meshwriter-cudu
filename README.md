@@ -29,12 +29,31 @@ const Writer = BABYLON.MeshWriter(scene, {scale: 1});
 const text = new Writer("Hello", {"letter-height": 50});
 ```
 
-MeshWriter automatically tracks the completion of `BABYLON.InitializeCSG2Async()`, so the synchronous constructor works as soon as CSG2 is initialized elsewhere in your app.
+MeshWriter automatically tracks the completion of `BABYLON.InitializeCSG2Async()`, so the synchronous constructor works as soon as CSG2 is initialized elsewhere in your app. If your build tree-shakes Babylon globals, register your initializer first with `MeshWriter.setCSGInitializer(() => InitializeCSG2Async(scene))` so `createAsync` knows how to initialize CSG2.
 
 ### Helper Methods
 
 - `MeshWriter.isReady()` - Check if CSG is initialized
 - `MeshWriter.getCSGVersion()` - Returns 'CSG2', 'CSG', or null
+- `MeshWriter.setCSGInitializer(fn)` - Provide a custom function that initializes CSG2 (used by `createAsync`)
+- `MeshWriter.setCSGReadyCheck(fn)` - Provide a custom readiness predicate if you manage CSG2 outside the global BABYLON namespace
+- `MeshWriter.onCSGReady(listener)` - Run code once CSG is ready (fires immediately if already ready)
+- `MeshWriter.markCSGReady()` - Manually flag CSG readiness if you initialize it yourself
+
+### Custom CSG Initialization Hooks
+
+When bundling Babylon.js you might tree-shake `InitializeCSG2Async` or host multiple Babylon roots. Use the hooks above to keep MeshWriter in sync:
+
+```ts
+import { InitializeCSG2Async, IsCSG2Ready } from "@babylonjs/core/Meshes/csg2";
+
+MeshWriter.setCSGInitializer(() => InitializeCSG2Async(scene));
+MeshWriter.setCSGReadyCheck(() => IsCSG2Ready());
+
+await MeshWriter.createAsync(scene, { methods: methodsObj });
+```
+
+If you initialize CSG2 elsewhere (e.g., your game bootstrap), call `MeshWriter.markCSGReady()` after your init promise resolves so the synchronous constructor can be used immediately.
 
 ## Javascript Calls And Parameters
 
