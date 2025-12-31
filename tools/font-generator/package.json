@@ -1,0 +1,26 @@
+{
+    "name": "@meshwriter/font-generator",
+    "version": "1.0.0",
+    "description": "Generate MeshWriter font modules from TTF/OTF files",
+    "type": "module",
+    "main": "index.js",
+    "bin": {
+        "meshwriter-font-gen": "./cli.js"
+    },
+    "scripts": {
+        "generate": "node cli.js",
+        "generate:all": "node cli.js --all"
+    },
+    "dependencies": {
+        "commander": "^12.0.0",
+        "opentype.js": "^1.3.4"
+    },
+    "keywords": [
+        "meshwriter",
+        "font",
+        "generator",
+        "babylonjs",
+        "3d-text"
+    ],
+    "license": "MIT"
+}

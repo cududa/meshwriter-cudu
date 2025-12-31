@@ -112,20 +112,57 @@ export interface MeshWriterConstructor {
 
 // ============ Font Types ============
 
-/** Font specification object containing glyph data */
-export interface FontSpec {
-    /** Whether to reverse hole winding */
-    reverseHoles: boolean;
-    /** Whether to reverse shape winding */
-    reverseShapes: boolean;
-    /** Character glyph data - indexed by character */
-    [character: string]: any;
+/** Individual glyph specification */
+export interface GlyphSpec {
+    /** Compressed shape command strings (pre-decompression) */
+    sC?: string[];
+    /** Compressed hole command strings - array of holes, each hole is array of command strings */
+    hC?: string[][];
+    /** Decompressed shape commands (post-decompression, internal use) */
+    shapeCmds?: number[][][];
+    /** Decompressed hole commands (post-decompression, internal use) */
+    holeCmds?: number[][][][];
+    /** Minimum X coordinate of bounding box */
+    xMin: number;
+    /** Maximum X coordinate of bounding box */
+    xMax: number;
+    /** Minimum Y coordinate of bounding box */
+    yMin: number;
+    /** Maximum Y coordinate of bounding box */
+    yMax: number;
+    /** Character advance width */
+    wdth: number;
+    /** X coordinate scale factor (optional) */
+    xFactor?: number;
+    /** Y coordinate scale factor (optional) */
+    yFactor?: number;
+    /** X coordinate shift (optional) */
+    xShift?: number;
+    /** Y coordinate shift (optional) */
+    yShift?: number;
+    /** Per-glyph reverse shape override (optional) */
+    reverseShape?: boolean;
+    /** Per-glyph reverse hole override (optional) */
+    reverseHole?: boolean;
 }
 
-/** Function that creates font spec from codeList encoder */
+/** Font specification object containing glyph data */
+export interface FontSpec {
+    /** Whether to reverse hole winding (default for all glyphs) */
+    reverseHoles: boolean;
+    /** Whether to reverse shape winding (default for all glyphs) */
+    reverseShapes: boolean;
+    /** Character glyph data - indexed by character */
+    [character: string]: GlyphSpec | boolean;
+}
+
+/**
+ * Function that creates font spec from codeList encoder
+ * @deprecated Use FontSpec directly instead of FontFactory
+ */
 export type FontFactory = (codeList: (list: number[][]) => string) => FontSpec;
 
-/** Font data - either a FontSpec or FontFactory */
+/** Font data - either a FontSpec object or a FontFactory function (legacy) */
 export type FontData = FontSpec | FontFactory;
 
 // ============ Main API Types ============
@@ -250,17 +287,3 @@ export function decodeFontData(encoded: string): number[][];
 
 /** Initialize the internal CSG module with Babylon helpers */
 export function initCSGModule(babylon: BabylonCSGNamespace): void;
-
-// ============ UMD Global Declarations ============
-
-declare global {
-    /** Global MeshWriter (UMD bundle) */
-    var MeshWriter: MeshWriterStatic | undefined;
-    /** Legacy name for MeshWriter (UMD bundle) */
-    var TYPE: MeshWriterStatic | undefined;
-
-    namespace BABYLON {
-        /** MeshWriter attached to BABYLON namespace (UMD bundle) */
-        var MeshWriter: MeshWriterStatic | undefined;
-    }
-}

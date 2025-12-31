@@ -1,0 +1,5 @@
+# Source font files (TTF/OTF) - don't commit due to licensing
+source-fonts/
+
+# Node modules for this tool
+node_modules/
