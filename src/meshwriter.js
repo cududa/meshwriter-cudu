@@ -70,17 +70,18 @@ export function createMeshWriter(scene, preferences = {}) {
         const y = setOption(position, "y", isNumber, 0);
         const x = setOption(position, "x", isNumber, 0);
         const z = setOption(position, "z", isNumber, 0);
-        const diffuse = setOption(colors, "diffuse", isString, "#F0F0F0");
+        const diffuse = setOption(colors, "diffuse", isString, "#404040");    // Dark gray - lets emissive show
         const specular = setOption(colors, "specular", isString, "#000000");
-        const ambient = setOption(colors, "ambient", isString, "#F0F0F0");
+        const ambient = setOption(colors, "ambient", isString, "#202020");    // Very dark - minimal ambient response
         const emissive = setOption(colors, "emissive", isString, basicColor);
+        const emissiveOnly = setOption(options, "emissive-only", isBoolean, false);
         const fontSpec = getFont(fontFamily);
         const letterScale = round(scale * rawheight / naturalLetterHeight);
         const thickness = round(scale * rawThickness);
         const letters = isString(lttrs) ? lttrs : "";
 
         // Create material
-        const material = makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac);
+        const material = makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly);
 
         // Create letter meshes
         const meshesAndBoxes = constructLetterPolygons(
@@ -117,8 +118,16 @@ export function createMeshWriter(scene, preferences = {}) {
         this.getLettersOrigins = () => lettersOrigins;
         this.color = c => isString(c) ? color = c : color;
         this.alpha = o => isAmplitude(o) ? opac : opac;
+        // Track disposed state to prevent double-disposal
+        let _disposed = false;
+
         this.clearall = function() {
-            // Clear references for GC
+            // Mark as disposed - getters will return null after this
+            _disposed = true;
+        };
+
+        this.isDisposed = function() {
+            return _disposed;
         };
     }
 
@@ -154,10 +163,24 @@ export function createMeshWriter(scene, preferences = {}) {
     };
 
     MeshWriter.prototype.dispose = function() {
+        // Prevent double-disposal
+        if (this.isDisposed && this.isDisposed()) {
+            return;
+        }
+
+        // Dispose material first (fixes memory leak - materials were never disposed)
+        const material = this.getMaterial();
+        if (material && typeof material.dispose === 'function') {
+            material.dispose();
+        }
+
+        // Dispose SolidParticleSystem (which also disposes its mesh)
         const sps = this.getSPS();
         if (sps) {
             sps.dispose();
         }
+
+        // Mark as disposed
         this.clearall();
     };
 

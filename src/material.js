@@ -39,14 +39,22 @@ export function rgb2Color3(rgb) {
  * @param {string} specular - Hex color for specular
  * @param {string} diffuse - Hex color for diffuse
  * @param {number} opac - Opacity (0-1)
+ * @param {boolean} [emissiveOnly=false] - If true, disables lighting (only emissive color shows)
  * @returns {StandardMaterial}
  */
-export function makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac) {
+export function makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly = false) {
     const material = new StandardMaterial("mw-matl-" + letters + "-" + weeid(), scene);
     material.diffuseColor = rgb2Color3(diffuse);
     material.specularColor = rgb2Color3(specular);
     material.ambientColor = rgb2Color3(ambient);
     material.emissiveColor = rgb2Color3(emissive);
     material.alpha = opac;
+
+    // When emissiveOnly is true, disable lighting so only emissive color shows
+    // This gives a "self-lit" appearance that ignores scene lights
+    if (emissiveOnly) {
+        material.disableLighting = true;
+    }
+
     return material;
 }

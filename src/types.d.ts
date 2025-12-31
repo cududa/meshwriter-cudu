@@ -46,6 +46,8 @@ export interface MeshWriterOptions {
     color?: string;
     /** Material alpha/transparency (0-1) */
     alpha?: number;
+    /** If true, disables lighting (only emissive color shows) - gives self-lit appearance */
+    'emissive-only'?: boolean;
 }
 
 /** Babylon namespace subset used for CSG injection */
@@ -100,6 +102,8 @@ export interface MeshWriterInstance {
     resetAlpha(): void;
     /** Get the center position of a letter by index */
     getLetterCenter(ix: number): Vector2;
+    /** Check if this instance has been disposed */
+    isDisposed(): boolean;
     /** Dispose of all meshes and materials */
     dispose(): void;
 }
