@@ -5,6 +5,7 @@
 
 import { StandardMaterial, Color3 } from './babylonImports.js';
 import { weeid } from './utils.js';
+import { TextFogPlugin } from './fogPlugin.js';
 
 /** @typedef {import('@babylonjs/core/scene').Scene} Scene */
 
@@ -40,9 +41,10 @@ export function rgb2Color3(rgb) {
  * @param {string} diffuse - Hex color for diffuse
  * @param {number} opac - Opacity (0-1)
  * @param {boolean} [emissiveOnly=false] - If true, disables lighting (only emissive color shows)
+ * @param {boolean} [fogEnabled=true] - If true, the material is affected by scene fog
  * @returns {StandardMaterial}
  */
-export function makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly = false) {
+export function makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly = false, fogEnabled = true) {
     const material = new StandardMaterial("mw-matl-" + letters + "-" + weeid(), scene);
     material.diffuseColor = rgb2Color3(diffuse);
     material.specularColor = rgb2Color3(specular);
@@ -54,6 +56,20 @@ export function makeMaterial(scene, letters, emissive, ambient, specular, diffus
     // This gives a "self-lit" appearance that ignores scene lights
     if (emissiveOnly) {
         material.disableLighting = true;
+    }
+
+    // Emissive-only materials should be self-lit and not affected by fog
+    if (emissiveOnly) {
+        material.fogEnabled = false;
+    } else {
+        material.fogEnabled = fogEnabled;
+        // Attach fog plugin to properly blend emissive color with fog
+        // Babylon's standard fog only affects diffuse/ambient, not emissive.
+        // The plugin re-fogs the entire fragment output so emissive fades properly.
+        // (The slight double-fog on diffuse/ambient is negligible since text is primarily emissive)
+        if (fogEnabled) {
+            material._textFogPlugin = new TextFogPlugin(material);
+        }
     }
 
     return material;

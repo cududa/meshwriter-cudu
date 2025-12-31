@@ -14,6 +14,7 @@ export { PolygonMeshBuilder } from '@babylonjs/core/Meshes/polygonMesh';
 
 // Materials
 export { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+export { MaterialPluginBase } from '@babylonjs/core/Materials/materialPluginBase';
 
 // Particle system
 export { SolidParticleSystem } from '@babylonjs/core/Particles/solidParticleSystem';

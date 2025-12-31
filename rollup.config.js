@@ -50,6 +50,7 @@ const babylonGlobals = {
     '@babylonjs/core/Meshes/mesh': 'BABYLON',
     '@babylonjs/core/Meshes/polygonMesh': 'BABYLON',
     '@babylonjs/core/Materials/standardMaterial': 'BABYLON',
+    '@babylonjs/core/Materials/materialPluginBase': 'BABYLON',
     '@babylonjs/core/Particles/solidParticleSystem': 'BABYLON',
     '@babylonjs/core/Meshes/csg': 'BABYLON',
     '@babylonjs/core/Meshes/csg2': 'BABYLON',

@@ -8,6 +8,8 @@
 import type { Scene } from '@babylonjs/core/scene';
 import type { Mesh } from '@babylonjs/core/Meshes/mesh';
 import type { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
+import type { Material } from '@babylonjs/core/Materials/material';
+import type { MaterialPluginBase } from '@babylonjs/core/Materials/materialPluginBase';
 import type { SolidParticleSystem } from '@babylonjs/core/Particles/solidParticleSystem';
 import type { Vector2 } from '@babylonjs/core/Maths/math.vector';
 
@@ -48,6 +50,8 @@ export interface MeshWriterOptions {
     alpha?: number;
     /** If true, disables lighting (only emissive color shows) - gives self-lit appearance */
     'emissive-only'?: boolean;
+    /** If true, the material is affected by scene fog (default: true) */
+    'fog-enabled'?: boolean;
 }
 
 /** Babylon namespace subset used for CSG injection */
@@ -291,3 +295,39 @@ export function decodeFontData(encoded: string): number[][];
 
 /** Initialize the internal CSG module with Babylon helpers */
 export function initCSGModule(babylon: BabylonCSGNamespace): void;
+
+// ============ Material Plugins ============
+
+/**
+ * TextFogPlugin - MaterialPluginBase that applies fog to emissive color
+ *
+ * Babylon's standard fog only affects diffuse/ambient channels.
+ * This plugin recalculates fog blending for the final color output,
+ * ensuring emissive text fades properly with distance fog.
+ *
+ * @example
+ * // Automatically attached when fog-enabled is true
+ * const text = new Writer("Hello", { 'fog-enabled': true });
+ *
+ * // Or manually attach to any StandardMaterial
+ * import { TextFogPlugin } from 'meshwriter';
+ * new TextFogPlugin(myMaterial);
+ */
+export class TextFogPlugin extends MaterialPluginBase {
+    constructor(material: Material);
+    prepareDefines(defines: Record<string, boolean>, scene: Scene, mesh: Mesh): void;
+    getClassName(): string;
+    getUniforms(): { ubo: Array<{ name: string; size?: number; type?: string; arraySize?: number }> };
+    getCustomCode(shaderType: string): Record<string, string> | null;
+    dispose(): void;
+}
+
+// ============ Module Augmentation ============
+
+// Extend StandardMaterial to include fog plugin reference
+declare module '@babylonjs/core/Materials/standardMaterial' {
+    interface StandardMaterial {
+        /** @internal TextFogPlugin instance attached by MeshWriter */
+        _textFogPlugin?: TextFogPlugin;
+    }
+}

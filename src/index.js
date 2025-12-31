@@ -40,6 +40,9 @@ export {
 // Utility exports (for advanced usage / font creation)
 export { codeList as encodeFontData, decodeList as decodeFontData } from './fontCompression.js';
 
+// Material plugins (for advanced usage)
+export { TextFogPlugin } from './fogPlugin.js';
+
 /**
  * MeshWriter namespace object (for convenience and backward compatibility patterns)
  */

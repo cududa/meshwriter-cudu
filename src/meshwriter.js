@@ -75,13 +75,14 @@ export function createMeshWriter(scene, preferences = {}) {
         const ambient = setOption(colors, "ambient", isString, "#202020");    // Very dark - minimal ambient response
         const emissive = setOption(colors, "emissive", isString, basicColor);
         const emissiveOnly = setOption(options, "emissive-only", isBoolean, false);
+        const fogEnabled = setOption(options, "fog-enabled", isBoolean, true);
         const fontSpec = getFont(fontFamily);
         const letterScale = round(scale * rawheight / naturalLetterHeight);
         const thickness = round(scale * rawThickness);
         const letters = isString(lttrs) ? lttrs : "";
 
         // Create material
-        const material = makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly);
+        const material = makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly, fogEnabled);
 
         // Create letter meshes
         const meshesAndBoxes = constructLetterPolygons(
