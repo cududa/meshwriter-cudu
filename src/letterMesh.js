@@ -315,10 +315,6 @@ function punchHolesInShapes(shapesList, holesList, letter, letterIndex, scene) {
         if (isArray(holes) && holes.length) {
             letterMeshes.push(punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion, scene));
         } else {
-            if (csgVersion === 'CSG2') {
-                // Flip faces to match CSG2-processed letters
-                shape.flipFaces();
-            }
             letterMeshes.push(shape);
         }
     }
@@ -340,11 +336,6 @@ function punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion
     const resultMesh = csgVersion === 'CSG2'
         ? csgShape.toMesh(meshName, scene, { centerMesh: false })
         : csgShape.toMesh(meshName, null, scene);
-
-    if (csgVersion === 'CSG2') {
-        // CSG2/Manifold produces opposite face winding compared to legacy CSG
-        resultMesh.flipFaces();
-    }
 
     // Cleanup
     holes.forEach(h => h.dispose());
