@@ -334,8 +334,14 @@ function punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion
     }
 
     const resultMesh = csgVersion === 'CSG2'
-        ? csgShape.toMesh(meshName, scene, { centerMesh: false })
+        ? csgShape.toMesh(meshName, scene, { centerMesh: false, rebuildNormals: true })
         : csgShape.toMesh(meshName, null, scene);
+
+    if (csgVersion === 'CSG2' && resultMesh) {
+        // CSG2/Manifold returns flipped winding relative to Babylon's PolygonMeshBuilder
+        // Flip faces so lighting responds consistently with non-CSG extrusions
+        resultMesh.flipFaces();
+    }
 
     // Cleanup
     holes.forEach(h => h.dispose());

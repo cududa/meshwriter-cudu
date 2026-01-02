@@ -43,6 +43,19 @@ export { codeList as encodeFontData, decodeList as decodeFontData } from './font
 // Material plugins (for advanced usage)
 export { TextFogPlugin } from './fogPlugin.js';
 
+// Color contrast utilities (for accessibility)
+export {
+    deriveEdgeColors,
+    adjustForContrast,
+    relativeLuminance,
+    contrastRatio,
+    hexToRgb,
+    rgbToHex,
+    rgbToHsl,
+    hslToRgb,
+    CONTRAST_LEVELS
+} from './colorContrast.js';
+
 /**
  * MeshWriter namespace object (for convenience and backward compatibility patterns)
  */

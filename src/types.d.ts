@@ -322,6 +322,128 @@ export class TextFogPlugin extends MaterialPluginBase {
     dispose(): void;
 }
 
+// ============ Color Contrast Types ============
+
+/** RGB color object with values in 0-1 range */
+export interface RGBColor {
+    r: number;
+    g: number;
+    b: number;
+}
+
+/** HSL color object with h in degrees (0-360), s and l in 0-1 range */
+export interface HSLColor {
+    h: number;
+    s: number;
+    l: number;
+}
+
+/** Colors for contrast adjustment */
+export interface ContrastColors {
+    emissive: string;
+    diffuse: string;
+    ambient?: string;
+}
+
+/** Options for adjustForContrast function */
+export interface AdjustContrastOptions {
+    /** Target WCAG contrast ratio (default: 4.5) */
+    targetContrast?: number;
+    /** Max edge color modification range 0-1 (default: 0.4) */
+    edgeRange?: number;
+    /** Max face color modification range 0-1 (default: 0.1) */
+    faceRange?: number;
+    /** Allow hue modifications for maximum contrast (default: true) */
+    allowHueShift?: boolean;
+}
+
+/** Result of contrast adjustment */
+export interface ContrastResult {
+    emissive: string;
+    diffuse: string;
+    ambient: string;
+    /** Achieved contrast ratio */
+    achieved: number;
+}
+
+/** WCAG contrast level constants */
+export const CONTRAST_LEVELS: {
+    /** WCAG AA for normal text: 4.5:1 */
+    AA_NORMAL: 4.5;
+    /** WCAG AA for large text: 3:1 */
+    AA_LARGE: 3.0;
+    /** WCAG AAA for normal text: 7:1 */
+    AAA_NORMAL: 7.0;
+    /** WCAG AAA for large text: 4.5:1 */
+    AAA_LARGE: 4.5;
+};
+
+/**
+ * Convert hex color string to RGB object
+ * @param hex - Hex color string (e.g., "#FF0000" or "FF0000")
+ */
+export function hexToRgb(hex: string): RGBColor;
+
+/**
+ * Convert RGB object to hex color string
+ * @param rgb - RGB color with values in 0-1 range
+ */
+export function rgbToHex(rgb: RGBColor): string;
+
+/**
+ * Convert RGB to HSL
+ * @param r - Red (0-1)
+ * @param g - Green (0-1)
+ * @param b - Blue (0-1)
+ */
+export function rgbToHsl(r: number, g: number, b: number): HSLColor;
+
+/**
+ * Convert HSL to RGB
+ * @param h - Hue in degrees (0-360)
+ * @param s - Saturation (0-1)
+ * @param l - Lightness (0-1)
+ */
+export function hslToRgb(h: number, s: number, l: number): RGBColor;
+
+/**
+ * Calculate relative luminance per WCAG 2.1
+ * @param r - Red (0-1)
+ * @param g - Green (0-1)
+ * @param b - Blue (0-1)
+ * @returns Relative luminance (0-1)
+ */
+export function relativeLuminance(r: number, g: number, b: number): number;
+
+/**
+ * Calculate WCAG contrast ratio between two luminance values
+ * @param L1 - Luminance of first color (0-1)
+ * @param L2 - Luminance of second color (0-1)
+ * @returns Contrast ratio (1-21)
+ */
+export function contrastRatio(L1: number, L2: number): number;
+
+/**
+ * Auto-derive edge colors (diffuse/ambient) from emissive color
+ * Creates high-contrast edges for text legibility
+ * Uses inverted approach: bright diffuse for lit surfaces, dark emissive for base
+ *
+ * @param emissiveHex - Hex color string for desired face color
+ * @param targetContrast - Target WCAG contrast ratio (default: 4.5)
+ * @returns Object with diffuse, ambient, and emissive hex colors
+ */
+export function deriveEdgeColors(emissiveHex: string, targetContrast?: number): { diffuse: string; ambient: string; emissive: string };
+
+/**
+ * Adjust colors to achieve WCAG contrast while preserving user intent
+ * Priority: prefer edge modifications over face modifications
+ *
+ * @param colors - User-provided colors
+ * @param options - Adjustment options
+ * @returns Adjusted colors with achieved contrast ratio
+ */
+export function adjustForContrast(colors: ContrastColors, options?: AdjustContrastOptions): ContrastResult;
+
 // ============ Module Augmentation ============
 
 // Extend StandardMaterial to include fog plugin reference
