@@ -8,40 +8,60 @@ import { SolidParticleSystem } from './babylonImports.js';
 /** @typedef {import('@babylonjs/core/scene').Scene} Scene */
 /** @typedef {import('@babylonjs/core/Materials/material').Material} Material */
 /** @typedef {import('@babylonjs/core/Meshes/mesh').Mesh} Mesh */
+/** @typedef {(any[] & { faceMeshes?: Mesh[] })} MeshCollection */
+/**
+ * @typedef {[SolidParticleSystem | undefined, Mesh | undefined] & {
+ *   face: [SolidParticleSystem | undefined, Mesh | undefined];
+ * }} SPSCombo
+ */
 
 /**
  * Create an SPS from letter meshes
  * @param {Scene} scene - Babylon scene
- * @param {Array} meshesAndBoxes - [meshes, boxes, origins] from constructLetterPolygons
+ * @param {MeshCollection} meshesAndBoxes - [meshes, boxes, origins] with optional face geometry
  * @param {Material} material - Material to apply to SPS mesh
- * @returns {[SolidParticleSystem | undefined, Mesh | undefined]} - [sps, spsMesh]
+ * @returns {SPSCombo} - Combined SPS + emissive face SPS
  */
 export function makeSPS(scene, meshesAndBoxes, material) {
-    const meshes = meshesAndBoxes[0];
-    const lettersOrigins = meshesAndBoxes[2];
-    let sps, spsMesh;
+    const rimMeshes = meshesAndBoxes[0] || [];
+    const faceMeshes = meshesAndBoxes.faceMeshes || [];
+    const lettersOrigins = meshesAndBoxes[2] || [];
 
-    if (meshes.length) {
-        sps = new SolidParticleSystem("sps" + "test", scene, {});
+    const rim = buildSystem("sps_rim", rimMeshes, lettersOrigins, scene, material);
+    const face = buildSystem("sps_face", faceMeshes, lettersOrigins, scene);
 
-        meshes.forEach(function(mesh, ix) {
-            sps.addShape(mesh, 1, {
-                positionFunction: makePositionParticle(lettersOrigins[ix])
-            });
-            mesh.dispose();
+    /** @type {SPSCombo} */
+    const combo = /** @type {any} */ ([rim.sps, rim.mesh]);
+    combo.face = [face.sps, face.mesh];
+    return combo;
+}
+
+function buildSystem(name, meshes, lettersOrigins, scene, material) {
+    if (!meshes.length) {
+        return { sps: undefined, mesh: undefined };
+    }
+
+    const sps = new SolidParticleSystem(name, scene, {});
+    meshes.forEach(function(mesh, ix) {
+        if (!mesh) return;
+        sps.addShape(mesh, 1, {
+            positionFunction: makePositionParticle(lettersOrigins[ix])
         });
+        mesh.dispose();
+    });
 
-        spsMesh = sps.buildMesh();
+    const spsMesh = sps.buildMesh();
+    if (spsMesh && material) {
         spsMesh.material = material;
-        sps.setParticles();
     }
+    sps.setParticles();
+    return { sps, mesh: spsMesh };
+}
 
-    return [sps, spsMesh];
-
-    function makePositionParticle(letterOrigins) {
-        return function positionParticle(particle, ix, s) {
-            particle.position.x = letterOrigins[0] + letterOrigins[1];
-            particle.position.z = letterOrigins[2];
-        };
-    }
+function makePositionParticle(letterOrigins) {
+    return function positionParticle(particle) {
+        if (!letterOrigins) return;
+        particle.position.x = letterOrigins[0] + letterOrigins[1];
+        particle.position.z = letterOrigins[2];
+    };
 }

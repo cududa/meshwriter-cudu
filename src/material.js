@@ -74,3 +74,30 @@ export function makeMaterial(scene, letters, emissive, ambient, specular, diffus
 
     return material;
 }
+
+/**
+ * Create a dedicated emissive material for front faces.
+ * This keeps the face self-lit while still respecting fog settings.
+ * @param {Scene} scene
+ * @param {string} letters
+ * @param {string} emissive
+ * @param {number} opac
+ * @param {boolean} fogEnabled
+ * @returns {StandardMaterial}
+ */
+export function makeFaceMaterial(scene, letters, emissive, opac, fogEnabled = true) {
+    const material = new StandardMaterial("mw-face-matl-" + letters + "-" + weeid(), scene);
+    const black = rgb2Color3("#000000");
+    material.diffuseColor = black;
+    material.specularColor = black;
+    material.ambientColor = black;
+    material.emissiveColor = rgb2Color3(emissive);
+    material.disableLighting = true;
+    material.alpha = opac;
+    material.backFaceCulling = false;
+    material.fogEnabled = fogEnabled;
+    if (fogEnabled) {
+        material._textFogPlugin = new TextFogPlugin(material);
+    }
+    return material;
+}

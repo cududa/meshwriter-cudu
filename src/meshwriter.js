@@ -9,7 +9,7 @@ import {
     initCSGModule, isCSGReady, getCSGVersion, initializeCSG2,
     setCSGInitializer, setCSGReadyCheck, onCSGReady, markCSGInitialized
 } from './csg.js';
-import { makeMaterial, rgb2Color3 } from './material.js';
+import { makeMaterial, makeFaceMaterial, rgb2Color3 } from './material.js';
 import { makeSPS } from './sps.js';
 import { constructLetterPolygons, naturalLetterHeight } from './letterMesh.js';
 import { installCurveExtensions } from './curves.js';
@@ -97,6 +97,24 @@ export function createMeshWriter(scene, preferences = {}) {
         const combo = makeSPS(scene, meshesAndBoxes, material);
         const sps = combo[0];
         const mesh = combo[1];
+        const faceCombo = combo.face || [];
+        const faceSps = faceCombo[0];
+        const faceMesh = faceCombo[1];
+        let faceMaterial;
+
+        if (faceMesh) {
+            faceMaterial = makeFaceMaterial(scene, letters, emissive, opac, fogEnabled);
+            faceMesh.material = faceMaterial;
+            if (mesh) {
+                faceMesh.parent = mesh;
+                faceMesh.layerMask = mesh.layerMask;
+                faceMesh.renderingGroupId = mesh.renderingGroupId;
+            }
+            // Small offset to prevent z-fighting with rim mesh
+            faceMesh.position.y = 0.002;
+            faceMesh.isPickable = false;
+            faceMesh.doNotSyncBoundingInfo = true;
+        }
 
         // Position mesh based on anchor
         const offsetX = anchor === "right"
@@ -114,6 +132,9 @@ export function createMeshWriter(scene, preferences = {}) {
         this.getSPS = () => sps;
         this.getMesh = () => mesh;
         this.getMaterial = () => material;
+        this.getFaceMesh = () => faceMesh;
+        this.getFaceMaterial = () => faceMaterial;
+        this.getFaceSPS = () => faceSps;
         this.getOffsetX = () => offsetX;
         this.getLettersBoxes = () => lettersBoxes;
         this.getLettersOrigins = () => lettersOrigins;
@@ -135,28 +156,49 @@ export function createMeshWriter(scene, preferences = {}) {
     // Prototype methods
     MeshWriter.prototype.setColor = function(color) {
         const material = this.getMaterial();
-        if (isString(color)) {
-            material.emissiveColor = rgb2Color3(this.color(color));
+        if (material && isString(color)) {
+            const next = rgb2Color3(this.color(color));
+            material.emissiveColor = next;
+            const faceMaterial = this.getFaceMaterial && this.getFaceMaterial();
+            if (faceMaterial) {
+                faceMaterial.emissiveColor = next;
+            }
         }
     };
 
     MeshWriter.prototype.setAlpha = function(alpha) {
         const material = this.getMaterial();
-        if (isAmplitude(alpha)) {
-            material.alpha = this.alpha(alpha);
+        if (material && isAmplitude(alpha)) {
+            const next = this.alpha(alpha);
+            material.alpha = next;
+            const faceMaterial = this.getFaceMaterial && this.getFaceMaterial();
+            if (faceMaterial) {
+                faceMaterial.alpha = next;
+            }
         }
     };
 
     MeshWriter.prototype.overrideAlpha = function(alpha) {
         const material = this.getMaterial();
-        if (isAmplitude(alpha)) {
+        if (material && isAmplitude(alpha)) {
             material.alpha = alpha;
+            const faceMaterial = this.getFaceMaterial && this.getFaceMaterial();
+            if (faceMaterial) {
+                faceMaterial.alpha = alpha;
+            }
         }
     };
 
     MeshWriter.prototype.resetAlpha = function() {
         const material = this.getMaterial();
-        material.alpha = this.alpha();
+        const alpha = this.alpha();
+        if (material) {
+            material.alpha = alpha;
+        }
+        const faceMaterial = this.getFaceMaterial && this.getFaceMaterial();
+        if (faceMaterial) {
+            faceMaterial.alpha = alpha;
+        }
     };
 
     MeshWriter.prototype.getLetterCenter = function(ix) {
@@ -174,11 +216,19 @@ export function createMeshWriter(scene, preferences = {}) {
         if (material && typeof material.dispose === 'function') {
             material.dispose();
         }
+        const faceMaterial = this.getFaceMaterial && this.getFaceMaterial();
+        if (faceMaterial && typeof faceMaterial.dispose === 'function') {
+            faceMaterial.dispose();
+        }
 
         // Dispose SolidParticleSystem (which also disposes its mesh)
         const sps = this.getSPS();
         if (sps) {
             sps.dispose();
+        }
+        const faceSps = this.getFaceSPS && this.getFaceSPS();
+        if (faceSps) {
+            faceSps.dispose();
         }
 
         // Mark as disposed

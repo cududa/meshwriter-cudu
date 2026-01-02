@@ -84,8 +84,14 @@ export interface MeshWriterInstance {
     getSPS(): SolidParticleSystem | undefined;
     /** Get the combined mesh containing all letters */
     getMesh(): Mesh | undefined;
+    /** Get the emissive face mesh (if available) */
+    getFaceMesh(): Mesh | undefined;
     /** Get the material applied to the text */
     getMaterial(): StandardMaterial;
+    /** Get the emissive material used for the face mesh */
+    getFaceMaterial(): StandardMaterial | undefined;
+    /** Get the SolidParticleSystem that powers the emissive face mesh */
+    getFaceSPS(): SolidParticleSystem | undefined;
     /** Get the X offset for anchoring */
     getOffsetX(): number;
     /** Get bounding boxes for each letter */

@@ -4,6 +4,7 @@
  */
 
 import { Path2, Vector2, Mesh, PolygonMeshBuilder } from './babylonImports.js';
+import { splitMeshByFaceNormals } from './meshSplitter.js';
 import { getCSGLib, getCSGVersion, isCSGReady } from './csg.js';
 import { decodeList } from './fontCompression.js';
 import {
@@ -68,6 +69,9 @@ function merge(arrayOfMeshes) {
  * @property {number} xWidth - Total width of all letters
  * @property {number} count - Number of valid letter meshes
  */
+/**
+ * @typedef {(any[] & LetterPolygonsResult) & { faceMeshes: Mesh[] }} LetterPolygonsCollection
+ */
 
 /**
  * Construct meshes for all letters in a string
@@ -91,6 +95,7 @@ export function constructLetterPolygons(
     const lettersOrigins = new Array(letters.length);
     const lettersBoxes = new Array(letters.length);
     const lettersMeshes = new Array(letters.length);
+    const faceMeshes = new Array(letters.length);
     let ix = 0;
 
     for (let i = 0; i < letters.length; i++) {
@@ -114,7 +119,10 @@ export function constructLetterPolygons(
             const letterMeshes = punchHolesInShapes(shapesList, holesList, letter, i, scene);
 
             if (letterMeshes.length) {
-                lettersMeshes[ix] = merge(letterMeshes);
+                const merged = merge(letterMeshes);
+                const split = splitMeshByFaceNormals(merged, scene);
+                lettersMeshes[ix] = split.rimMesh;
+                faceMeshes[ix] = split.faceMesh;
                 lettersOrigins[ix] = letterOrigins;
                 lettersBoxes[ix] = letterBox;
                 ix++;
@@ -122,8 +130,9 @@ export function constructLetterPolygons(
         }
     }
 
-    /** @type {any[] & LetterPolygonsResult} */
+    /** @type {LetterPolygonsCollection} */
     const meshesAndBoxes = /** @type {any} */ ([lettersMeshes, lettersBoxes, lettersOrigins]);
+    meshesAndBoxes.faceMeshes = faceMeshes;
     meshesAndBoxes.xWidth = round(letterOffsetX);
     meshesAndBoxes.count = ix;
     return meshesAndBoxes;
@@ -315,6 +324,11 @@ function punchHolesInShapes(shapesList, holesList, letter, letterIndex, scene) {
         if (isArray(holes) && holes.length) {
             letterMeshes.push(punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion, scene));
         } else {
+            // For CSG2, PolygonMeshBuilder creates meshes with normals that need flipping
+            // to match the expected orientation (same as CSG-processed letters)
+            if (csgVersion === 'CSG2' && shape) {
+                shape.flipFaces(true);
+            }
             letterMeshes.push(shape);
         }
     }
@@ -339,8 +353,8 @@ function punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion
 
     if (csgVersion === 'CSG2' && resultMesh) {
         // CSG2/Manifold returns flipped winding relative to Babylon's PolygonMeshBuilder
-        // Flip faces so lighting responds consistently with non-CSG extrusions
-        resultMesh.flipFaces();
+        // Flip faces AND normals so lighting responds consistently with non-CSG extrusions
+        resultMesh.flipFaces(true);
     }
 
     // Cleanup

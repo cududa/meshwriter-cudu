@@ -10,6 +10,7 @@ export { Path2, Curve3 } from '@babylonjs/core/Maths/math.path';
 
 // Mesh types
 export { Mesh } from '@babylonjs/core/Meshes/mesh';
+export { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData';
 export { PolygonMeshBuilder } from '@babylonjs/core/Meshes/polygonMesh';
 
 // Materials

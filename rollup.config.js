@@ -48,6 +48,7 @@ const babylonGlobals = {
     '@babylonjs/core/Maths/math.color': 'BABYLON',
     '@babylonjs/core/Maths/math.path': 'BABYLON',
     '@babylonjs/core/Meshes/mesh': 'BABYLON',
+    '@babylonjs/core/Meshes/mesh.vertexData': 'BABYLON',
     '@babylonjs/core/Meshes/polygonMesh': 'BABYLON',
     '@babylonjs/core/Materials/standardMaterial': 'BABYLON',
     '@babylonjs/core/Materials/materialPluginBase': 'BABYLON',
