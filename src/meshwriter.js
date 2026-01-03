@@ -121,7 +121,7 @@ export function createMeshWriter(scene, preferences = {}) {
             // We want face IN FRONT of rim, so use POSITIVE Y
             faceMesh.position.y = 0.01;
             faceMesh.isPickable = false;
-            faceMesh.doNotSyncBoundingInfo = true;
+            // Removed doNotSyncBoundingInfo - was causing frustum culling issues
 
             // DEBUG: Log face mesh positioning
             console.log('[meshwriter] Face mesh setup:', {
