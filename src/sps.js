@@ -70,17 +70,21 @@ function buildFaceMesh(name, meshes, lettersOrigins, scene) {
 }
 
 function buildSystem(name, meshes, lettersOrigins, scene, material) {
-    if (!meshes.length) {
+    // Pre-filter null meshes to avoid repeated null checks in hot loop
+    const validMeshes = meshes
+        .map((mesh, ix) => mesh ? { mesh, origins: lettersOrigins[ix] } : null)
+        .filter(item => item !== null);
+
+    if (!validMeshes.length) {
         return { sps: undefined, mesh: undefined };
     }
 
     const sps = new SolidParticleSystem(name, scene, {});
-    meshes.forEach(function(mesh, ix) {
-        if (!mesh) return;
-        sps.addShape(mesh, 1, {
-            positionFunction: makePositionParticle(lettersOrigins[ix])
+    validMeshes.forEach(function(item) {
+        sps.addShape(item.mesh, 1, {
+            positionFunction: makePositionParticle(item.origins)
         });
-        mesh.dispose();
+        item.mesh.dispose();
     });
 
     const spsMesh = sps.buildMesh();

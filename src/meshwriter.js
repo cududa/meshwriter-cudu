@@ -212,13 +212,20 @@ export function createMeshWriter(scene, preferences = {}) {
             return;
         }
 
-        // Dispose material first (fixes memory leak - materials were never disposed)
+        // Dispose TextFogPlugin before materials to break circular references
         const material = this.getMaterial();
-        if (material && typeof material.dispose === 'function') {
+        if (material) {
+            if (material._textFogPlugin && typeof material._textFogPlugin.dispose === 'function') {
+                material._textFogPlugin.dispose();
+            }
             material.dispose();
         }
+
         const faceMaterial = this.getFaceMaterial && this.getFaceMaterial();
-        if (faceMaterial && typeof faceMaterial.dispose === 'function') {
+        if (faceMaterial) {
+            if (faceMaterial._textFogPlugin && typeof faceMaterial._textFogPlugin.dispose === 'function') {
+                faceMaterial._textFogPlugin.dispose();
+            }
             faceMaterial.dispose();
         }
 
@@ -227,9 +234,11 @@ export function createMeshWriter(scene, preferences = {}) {
         if (sps) {
             sps.dispose();
         }
-        const faceSps = this.getFaceSPS && this.getFaceSPS();
-        if (faceSps) {
-            faceSps.dispose();
+
+        // Dispose face mesh (merged mesh, not SPS-based)
+        const faceMesh = this.getFaceMesh && this.getFaceMesh();
+        if (faceMesh && typeof faceMesh.dispose === 'function') {
+            faceMesh.dispose();
         }
 
         // Mark as disposed
