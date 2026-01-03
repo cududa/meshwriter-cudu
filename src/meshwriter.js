@@ -110,10 +110,10 @@ export function createMeshWriter(scene, preferences = {}) {
                 faceMesh.layerMask = mesh.layerMask;
                 faceMesh.renderingGroupId = mesh.renderingGroupId;
             }
-            // Small offset to prevent z-fighting with rim mesh
+            // Tiny offset to prevent z-fighting without leaving a visible gap
             // rotation.x=-PI/2 maps: +Y → -Z (toward camera), -Y → +Z (away)
             // We want face IN FRONT of rim, so use POSITIVE Y
-            faceMesh.position.y = 0.01;
+            faceMesh.position.y = 0.001;
             faceMesh.isPickable = false;
         }
 
