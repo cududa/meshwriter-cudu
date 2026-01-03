@@ -3,15 +3,15 @@
  * Converts letter meshes into an efficient SPS
  */
 
-import { SolidParticleSystem } from './babylonImports.js';
+import { SolidParticleSystem, Mesh } from './babylonImports.js';
 
 /** @typedef {import('@babylonjs/core/scene').Scene} Scene */
 /** @typedef {import('@babylonjs/core/Materials/material').Material} Material */
-/** @typedef {import('@babylonjs/core/Meshes/mesh').Mesh} Mesh */
-/** @typedef {(any[] & { faceMeshes?: Mesh[] })} MeshCollection */
+/** @typedef {import('@babylonjs/core/Meshes/mesh').Mesh} BabylonMesh */
+/** @typedef {(any[] & { faceMeshes?: BabylonMesh[] })} MeshCollection */
 /**
- * @typedef {[SolidParticleSystem | undefined, Mesh | undefined] & {
- *   face: [SolidParticleSystem | undefined, Mesh | undefined];
+ * @typedef {[SolidParticleSystem | undefined, BabylonMesh | undefined] & {
+ *   face: [SolidParticleSystem | undefined, BabylonMesh | undefined];
  * }} SPSCombo
  */
 
@@ -28,12 +28,51 @@ export function makeSPS(scene, meshesAndBoxes, material) {
     const lettersOrigins = meshesAndBoxes[2] || [];
 
     const rim = buildSystem("sps_rim", rimMeshes, lettersOrigins, scene, material);
-    const face = buildSystem("sps_face", faceMeshes, lettersOrigins, scene);
+
+    // Use Mesh.MergeMeshes for face instead of SPS - SPS has issues with face geometry
+    const face = buildFaceMesh("sps_face", faceMeshes, lettersOrigins, scene);
 
     /** @type {SPSCombo} */
     const combo = /** @type {any} */ ([rim.sps, rim.mesh]);
-    combo.face = [face.sps, face.mesh];
+    combo.face = [undefined, face.mesh]; // No SPS for face, just merged mesh
     return combo;
+}
+
+/**
+ * Build face mesh using Mesh.MergeMeshes instead of SPS
+ * @param {string} name - Mesh name
+ * @param {BabylonMesh[]} meshes - Face meshes to merge
+ * @param {Array} lettersOrigins - Letter origin positions
+ * @param {Scene} scene - Babylon scene
+ * @returns {{ mesh: BabylonMesh | undefined }}
+ */
+function buildFaceMesh(name, meshes, lettersOrigins, scene) {
+    const validMeshes = meshes.filter(m => m != null);
+    if (!validMeshes.length) {
+        return { mesh: undefined };
+    }
+
+    // Position each mesh according to letter origins before merging
+    validMeshes.forEach((mesh, ix) => {
+        if (lettersOrigins[ix]) {
+            mesh.position.x = lettersOrigins[ix][0] + lettersOrigins[ix][1];
+            mesh.position.z = lettersOrigins[ix][2];
+        }
+    });
+
+    // Merge all face meshes into one
+    const merged = Mesh.MergeMeshes(validMeshes, true, true, undefined, false, true);
+    if (merged) {
+        merged.name = name;
+    }
+
+    console.log('[sps] Face mesh merged:', {
+        inputCount: validMeshes.length,
+        resultVertices: merged ? merged.getTotalVertices() : 0,
+        resultIndices: merged ? (merged.getIndices() ? merged.getIndices().length : 0) : 0
+    });
+
+    return { mesh: merged };
 }
 
 function buildSystem(name, meshes, lettersOrigins, scene, material) {
@@ -44,6 +83,15 @@ function buildSystem(name, meshes, lettersOrigins, scene, material) {
     const sps = new SolidParticleSystem(name, scene, {});
     meshes.forEach(function(mesh, ix) {
         if (!mesh) return;
+        // DEBUG: Log mesh indices before adding to SPS
+        const indices = mesh.getIndices();
+        const vertices = mesh.getTotalVertices();
+        console.log('[sps] Adding shape to ' + name + ':', {
+            meshName: mesh.name,
+            vertices: vertices,
+            indices: indices ? indices.length : 0,
+            hasGeometry: !!mesh.geometry
+        });
         sps.addShape(mesh, 1, {
             positionFunction: makePositionParticle(lettersOrigins[ix])
         });
@@ -51,10 +99,30 @@ function buildSystem(name, meshes, lettersOrigins, scene, material) {
     });
 
     const spsMesh = sps.buildMesh();
+
+    // DEBUG: Log indices immediately after buildMesh
+    if (spsMesh) {
+        const afterBuildIndices = spsMesh.getIndices();
+        console.log('[sps] After buildMesh ' + name + ':', {
+            vertices: spsMesh.getTotalVertices(),
+            indices: afterBuildIndices ? afterBuildIndices.length : 0
+        });
+    }
+
     if (spsMesh && material) {
         spsMesh.material = material;
     }
     sps.setParticles();
+
+    // DEBUG: Log indices after setParticles
+    if (spsMesh) {
+        const finalIndices = spsMesh.getIndices();
+        console.log('[sps] After setParticles ' + name + ':', {
+            vertices: spsMesh.getTotalVertices(),
+            indices: finalIndices ? finalIndices.length : 0
+        });
+    }
+
     return { sps, mesh: spsMesh };
 }
 

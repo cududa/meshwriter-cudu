@@ -32,6 +32,23 @@ export function splitMeshByFaceNormals(mesh, scene) {
         axisInfo = detectExtrudeAxisFromPositions(positions)
     }
 
+    // DEBUG: Log axis detection results
+    console.log('[meshSplitter] axisInfo:', {
+        axis: axisInfo ? axisInfo.axis : null,
+        axisName: axisInfo ? ['X', 'Y', 'Z'][axisInfo.axis] : null,
+        strategy: axisInfo ? axisInfo.strategy : null,
+        frontSide: axisInfo ? axisInfo.frontSide : null,
+        frontSign: axisInfo ? axisInfo.frontSign : null,
+        min: axisInfo ? axisInfo.min : null,
+        max: axisInfo ? axisInfo.max : null,
+        epsilon: axisInfo ? axisInfo.epsilon : null
+    })
+
+    // DEBUG: Reset triangle log counter for this mesh
+    /** @type {any} */
+    var _win = typeof window !== 'undefined' ? window : null
+    if (_win) _win._triangleLogCount = 0
+
     for (var i = 0; i < indices.length; i += 3) {
         var i0 = indices[i]
         var i1 = indices[i + 1]
@@ -43,6 +60,15 @@ export function splitMeshByFaceNormals(mesh, scene) {
         var v2 = appendVertex(target, i2, positions, normals, uvs)
         target.indices.push(v0, v1, v2)
     }
+
+    // DEBUG: Log triangle classification results
+    console.log('[meshSplitter] Triangle classification:', {
+        totalTriangles: indices.length / 3,
+        faceTriangles: faceData.indices.length / 3,
+        rimTriangles: rimData.indices.length / 3,
+        faceVertices: faceData.positions.length / 3,
+        rimVertices: rimData.positions.length / 3
+    })
 
     mesh.dispose()
 
@@ -151,12 +177,26 @@ function detectFaceAxisFromGeometry(positions, normals, indices) {
 
     var chosen = counts[bestAxis]
     var frontSide
-    // For extruded text, the front face is always at the 'max' position of the
-    // extrusion axis (Y=0 for text at Y=[-depth, 0]). Use triangle count to pick
-    // the side with more face geometry, defaulting to 'max'.
-    if (chosen.max >= chosen.min) {
+    // For PolygonMeshBuilder extrusions: geometry goes from Y=0 (back) to Y=-depth (front)
+    // The visible front face (facing camera after rotation) is at the MIN position (Y=-depth)
+    // Select MIN as front to get the correct cap
+    var maxHasOutwardNormals = chosen.sumMax > 0
+    var minHasOutwardNormals = chosen.sumMin < 0
+
+    console.log('[meshSplitter] Normal direction check:', {
+        sumMax: chosen.sumMax,
+        sumMin: chosen.sumMin,
+        maxHasOutwardNormals,
+        minHasOutwardNormals
+    })
+
+    // For text extrusions, the front face is at MIN (the extruded end), not MAX (the base)
+    if (minHasOutwardNormals) {
+        frontSide = 'min'
+    } else if (maxHasOutwardNormals) {
         frontSide = 'max'
     } else {
+        // Fallback to min (typical for extrusions)
         frontSide = 'min'
     }
 
@@ -254,6 +294,38 @@ function detectExtrudeAxisFromPositions(positions) {
 function triangleIsFrontFace(i0, i1, i2, positions, normals, axisInfo) {
     if (!axisInfo) return false
     var axis = axisInfo.axis || 1
+
+    // DEBUG: Log first few triangle checks
+    /** @type {any} */
+    var _winRef = typeof window !== 'undefined' ? window : null
+    var shouldLog = _winRef && _winRef._triangleLogCount < 5
+    if (shouldLog) {
+        var logData = {
+            strategy: axisInfo.strategy,
+            axis: axis,
+            axisName: ['X', 'Y', 'Z'][axis],
+            indices: [i0, i1, i2]
+        }
+        if (normals) {
+            logData.normals = [
+                normals[i0 * 3 + axis],
+                normals[i1 * 3 + axis],
+                normals[i2 * 3 + axis]
+            ]
+        }
+        if (positions) {
+            logData.positions = [
+                positions[i0 * 3 + axis],
+                positions[i1 * 3 + axis],
+                positions[i2 * 3 + axis]
+            ]
+            logData.frontSide = axisInfo.frontSide
+            logData.limitVal = axisInfo.frontSide === 'min' ? axisInfo.min : axisInfo.max
+            logData.epsilon = axisInfo.epsilon
+        }
+        console.log('[meshSplitter] triangleIsFrontFace check:', logData)
+        _winRef._triangleLogCount++
+    }
 
     if (axisInfo.strategy === 'normals' && normals) {
         var frontSign = axisInfo.frontSign || 1

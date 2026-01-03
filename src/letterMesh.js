@@ -121,6 +121,19 @@ export function constructLetterPolygons(
             if (letterMeshes.length) {
                 const merged = merge(letterMeshes);
                 const split = splitMeshByFaceNormals(merged, scene);
+
+                // DEBUG: Log split result with indices
+                var rimIndices = split.rimMesh ? split.rimMesh.getIndices() : null;
+                var faceIndices = split.faceMesh ? split.faceMesh.getIndices() : null;
+                console.log('[letterMesh] Split result for letter "' + letter + '" (index ' + i + '):', {
+                    hasRimMesh: !!split.rimMesh,
+                    hasFaceMesh: !!split.faceMesh,
+                    rimVertexCount: split.rimMesh ? split.rimMesh.getTotalVertices() : 0,
+                    rimIndexCount: rimIndices ? rimIndices.length : 0,
+                    faceVertexCount: split.faceMesh ? split.faceMesh.getTotalVertices() : 0,
+                    faceIndexCount: faceIndices ? faceIndices.length : 0
+                });
+
                 lettersMeshes[ix] = split.rimMesh;
                 faceMeshes[ix] = split.faceMesh;
                 lettersOrigins[ix] = letterOrigins;
@@ -324,11 +337,8 @@ function punchHolesInShapes(shapesList, holesList, letter, letterIndex, scene) {
         if (isArray(holes) && holes.length) {
             letterMeshes.push(punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion, scene));
         } else {
-            // For CSG2, PolygonMeshBuilder creates meshes with normals that need flipping
-            // to match the expected orientation (same as CSG-processed letters)
-            if (csgVersion === 'CSG2' && shape) {
-                shape.flipFaces(true);
-            }
+            // PolygonMeshBuilder creates meshes with correct normals by default
+            // No flipFaces needed for shapes without holes
             letterMeshes.push(shape);
         }
     }
@@ -351,11 +361,8 @@ function punchHolesInShape(shape, holes, letter, letterIndex, csgLib, csgVersion
         ? csgShape.toMesh(meshName, scene, { centerMesh: false, rebuildNormals: true })
         : csgShape.toMesh(meshName, null, scene);
 
-    if (csgVersion === 'CSG2' && resultMesh) {
-        // CSG2/Manifold returns flipped winding relative to Babylon's PolygonMeshBuilder
-        // Flip faces AND normals so lighting responds consistently with non-CSG extrusions
-        resultMesh.flipFaces(true);
-    }
+    // CSG2 with rebuildNormals: true produces correct normals
+    // No flipFaces needed
 
     // Cleanup
     holes.forEach(h => h.dispose());

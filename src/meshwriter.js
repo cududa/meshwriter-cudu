@@ -102,6 +102,12 @@ export function createMeshWriter(scene, preferences = {}) {
         const faceMesh = faceCombo[1];
         let faceMaterial;
 
+        // DEBUG: Check indices immediately after receiving SPS meshes
+        console.log('[meshwriter] After makeSPS:', {
+            rimIndices: mesh ? (mesh.getIndices() ? mesh.getIndices().length : 0) : 'no mesh',
+            faceIndices: faceMesh ? (faceMesh.getIndices() ? faceMesh.getIndices().length : 0) : 'no mesh'
+        });
+
         if (faceMesh) {
             faceMaterial = makeFaceMaterial(scene, letters, emissive, opac, fogEnabled);
             faceMesh.material = faceMaterial;
@@ -111,9 +117,22 @@ export function createMeshWriter(scene, preferences = {}) {
                 faceMesh.renderingGroupId = mesh.renderingGroupId;
             }
             // Small offset to prevent z-fighting with rim mesh
-            faceMesh.position.y = 0.002;
+            // rotation.x=-PI/2 maps: +Y → -Z (toward camera), -Y → +Z (away)
+            // We want face IN FRONT of rim, so use POSITIVE Y
+            faceMesh.position.y = 0.01;
             faceMesh.isPickable = false;
             faceMesh.doNotSyncBoundingInfo = true;
+
+            // DEBUG: Log face mesh positioning
+            console.log('[meshwriter] Face mesh setup:', {
+                hasFaceMesh: true,
+                yOffset: 0.002,
+                faceMeshName: faceMesh.name,
+                faceMeshParent: mesh ? mesh.name : null,
+                faceVertexCount: faceMesh.getTotalVertices()
+            });
+        } else {
+            console.log('[meshwriter] No face mesh created');
         }
 
         // Position mesh based on anchor
