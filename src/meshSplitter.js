@@ -177,27 +177,20 @@ function detectFaceAxisFromGeometry(positions, normals, indices) {
 
     var chosen = counts[bestAxis]
     var frontSide
-    // For PolygonMeshBuilder extrusions: geometry goes from Y=0 (back) to Y=-depth (front)
-    // The visible front face (facing camera after rotation) is at the MIN position (Y=-depth)
-    // Select MIN as front to get the correct cap
+    // For PolygonMeshBuilder extrusions: geometry goes from Y=0 (base) to Y=-depth (extruded end)
+    // After rotation -PI/2 around X: Y=0 → Z=0 (front, facing camera), Y=-depth → Z=+depth (back)
+    // So Y=max (Y=0) is the FRONT face, Y=min (Y=-depth) is the BACK face
     var maxHasOutwardNormals = chosen.sumMax > 0
     var minHasOutwardNormals = chosen.sumMin < 0
 
-    console.log('[meshSplitter] Normal direction check:', {
-        sumMax: chosen.sumMax,
-        sumMin: chosen.sumMin,
-        maxHasOutwardNormals,
-        minHasOutwardNormals
-    })
-
-    // For text extrusions, the front face is at MIN (the extruded end), not MAX (the base)
-    if (minHasOutwardNormals) {
-        frontSide = 'min'
-    } else if (maxHasOutwardNormals) {
+    // Select MAX as front (the base at Y=0 which faces camera after rotation)
+    if (maxHasOutwardNormals) {
         frontSide = 'max'
-    } else {
-        // Fallback to min (typical for extrusions)
+    } else if (minHasOutwardNormals) {
         frontSide = 'min'
+    } else {
+        // Fallback to max (the base)
+        frontSide = 'max'
     }
 
     return {
