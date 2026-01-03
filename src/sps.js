@@ -66,12 +66,6 @@ function buildFaceMesh(name, meshes, lettersOrigins, scene) {
         merged.name = name;
     }
 
-    console.log('[sps] Face mesh merged:', {
-        inputCount: validMeshes.length,
-        resultVertices: merged ? merged.getTotalVertices() : 0,
-        resultIndices: merged ? (merged.getIndices() ? merged.getIndices().length : 0) : 0
-    });
-
     return { mesh: merged };
 }
 
@@ -83,15 +77,6 @@ function buildSystem(name, meshes, lettersOrigins, scene, material) {
     const sps = new SolidParticleSystem(name, scene, {});
     meshes.forEach(function(mesh, ix) {
         if (!mesh) return;
-        // DEBUG: Log mesh indices before adding to SPS
-        const indices = mesh.getIndices();
-        const vertices = mesh.getTotalVertices();
-        console.log('[sps] Adding shape to ' + name + ':', {
-            meshName: mesh.name,
-            vertices: vertices,
-            indices: indices ? indices.length : 0,
-            hasGeometry: !!mesh.geometry
-        });
         sps.addShape(mesh, 1, {
             positionFunction: makePositionParticle(lettersOrigins[ix])
         });
@@ -100,28 +85,10 @@ function buildSystem(name, meshes, lettersOrigins, scene, material) {
 
     const spsMesh = sps.buildMesh();
 
-    // DEBUG: Log indices immediately after buildMesh
-    if (spsMesh) {
-        const afterBuildIndices = spsMesh.getIndices();
-        console.log('[sps] After buildMesh ' + name + ':', {
-            vertices: spsMesh.getTotalVertices(),
-            indices: afterBuildIndices ? afterBuildIndices.length : 0
-        });
-    }
-
     if (spsMesh && material) {
         spsMesh.material = material;
     }
     sps.setParticles();
-
-    // DEBUG: Log indices after setParticles
-    if (spsMesh) {
-        const finalIndices = spsMesh.getIndices();
-        console.log('[sps] After setParticles ' + name + ':', {
-            vertices: spsMesh.getTotalVertices(),
-            indices: finalIndices ? finalIndices.length : 0
-        });
-    }
 
     return { sps, mesh: spsMesh };
 }

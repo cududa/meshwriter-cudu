@@ -122,18 +122,6 @@ export function constructLetterPolygons(
                 const merged = merge(letterMeshes);
                 const split = splitMeshByFaceNormals(merged, scene);
 
-                // DEBUG: Log split result with indices
-                var rimIndices = split.rimMesh ? split.rimMesh.getIndices() : null;
-                var faceIndices = split.faceMesh ? split.faceMesh.getIndices() : null;
-                console.log('[letterMesh] Split result for letter "' + letter + '" (index ' + i + '):', {
-                    hasRimMesh: !!split.rimMesh,
-                    hasFaceMesh: !!split.faceMesh,
-                    rimVertexCount: split.rimMesh ? split.rimMesh.getTotalVertices() : 0,
-                    rimIndexCount: rimIndices ? rimIndices.length : 0,
-                    faceVertexCount: split.faceMesh ? split.faceMesh.getTotalVertices() : 0,
-                    faceIndexCount: faceIndices ? faceIndices.length : 0
-                });
-
                 lettersMeshes[ix] = split.rimMesh;
                 faceMeshes[ix] = split.faceMesh;
                 lettersOrigins[ix] = letterOrigins;
