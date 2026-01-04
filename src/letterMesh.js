@@ -23,6 +23,19 @@ const earcut = earcutModule.default || earcutModule;
 const naturalLetterHeight = 1000;
 
 /**
+ * Get kerning value between two characters
+ * @param {Object} fontSpec - Font specification object
+ * @param {string} left - Left character
+ * @param {string} right - Right character
+ * @returns {number} - Kerning adjustment value (0 if none)
+ */
+function getKerning(fontSpec, left, right) {
+    if (!fontSpec.kern) return 0;
+    const key = `${left},${right}`;
+    return fontSpec.kern[key] || 0;
+}
+
+/**
  * Decompress font letter on first use (lazy decompression)
  * @param {Object} fontSpec - Font specification object
  * @param {string} letter - Character to get spec for
@@ -112,7 +125,16 @@ export function constructLetterPolygons(
             const holesList = lists[1];
             const letterBox = lists[2];
             const letterOrigins = lists[3];
-            const newOffsetX = lists[4];
+            let newOffsetX = lists[4];
+
+            // Apply kerning with next letter (if any)
+            if (i < letters.length - 1) {
+                const nextLetter = letters[i + 1];
+                const kernValue = getKerning(fontSpec, letter, nextLetter);
+                if (kernValue !== 0) {
+                    newOffsetX += kernValue * letterScale;
+                }
+            }
 
             letterOffsetX = newOffsetX;
 

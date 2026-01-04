@@ -310,7 +310,51 @@ export async function convertFont(fontPath, options = {}) {
     console.log(`  Converted: ${convertedCount} glyphs`);
     console.log(`  Skipped: ${skippedCount} (not in font or empty)`);
 
+    // Extract kerning pairs for all character combinations in charset
+    const kerningPairs = extractKerningPairs(font, charset, scale);
+    if (Object.keys(kerningPairs).length > 0) {
+        fontSpec.kern = kerningPairs;
+        console.log(`  Kerning pairs: ${Object.keys(kerningPairs).length}`);
+    } else {
+        console.log(`  Kerning pairs: 0 (font has no kerning data)`);
+    }
+
     return fontSpec;
+}
+
+/**
+ * Extract kerning pairs from font for given character set
+ * @param {object} font - opentype.js font object
+ * @param {string} charset - Characters to extract kerning for
+ * @param {number} scale - Scale factor
+ * @returns {object} - Kerning table mapping "char1,char2" to adjustment value
+ */
+function extractKerningPairs(font, charset, scale) {
+    const kerningPairs = {};
+    const chars = [...charset];
+
+    // Build glyph cache for efficiency
+    const glyphCache = new Map();
+    for (const char of chars) {
+        const glyph = font.charToGlyph(char);
+        if (glyph && glyph.index !== 0) {
+            glyphCache.set(char, glyph);
+        }
+    }
+
+    // Check all character pair combinations
+    for (const [char1, glyph1] of glyphCache) {
+        for (const [char2, glyph2] of glyphCache) {
+            const kernValue = font.getKerningValue(glyph1, glyph2);
+            if (kernValue !== 0) {
+                // Store non-zero kerning values, scaled
+                const key = `${char1},${char2}`;
+                kerningPairs[key] = Math.round(kernValue * scale);
+            }
+        }
+    }
+
+    return kerningPairs;
 }
 
 /**
@@ -333,9 +377,23 @@ export function generateFontModule(fontSpec, fontName) {
     lines.push(`    reverseHoles: ${fontSpec.reverseHoles},`);
     lines.push(`    reverseShapes: ${fontSpec.reverseShapes},`);
 
+    // Add kerning table if present
+    if (fontSpec.kern && Object.keys(fontSpec.kern).length > 0) {
+        lines.push('    kern: {');
+        const kernEntries = Object.entries(fontSpec.kern);
+        for (let i = 0; i < kernEntries.length; i++) {
+            const [pair, value] = kernEntries[i];
+            const isLast = i === kernEntries.length - 1;
+            // Escape the pair key (contains comma, may have special chars)
+            const escapedPair = JSON.stringify(pair);
+            lines.push(`        ${escapedPair}: ${value}${isLast ? '' : ','}`);
+        }
+        lines.push('    },');
+    }
+
     // Add glyphs
     const glyphEntries = Object.entries(fontSpec)
-        .filter(([key]) => key !== 'reverseHoles' && key !== 'reverseShapes');
+        .filter(([key]) => key !== 'reverseHoles' && key !== 'reverseShapes' && key !== 'kern');
 
     for (let i = 0; i < glyphEntries.length; i++) {
         const [char, glyph] = glyphEntries[i];

@@ -160,14 +160,22 @@ export interface GlyphSpec {
     reverseHole?: boolean;
 }
 
+/** Kerning table mapping character pairs to adjustment values */
+export interface KerningTable {
+    /** Kerning adjustment indexed by "char1,char2" key */
+    [pair: string]: number;
+}
+
 /** Font specification object containing glyph data */
 export interface FontSpec {
     /** Whether to reverse hole winding (default for all glyphs) */
     reverseHoles: boolean;
     /** Whether to reverse shape winding (default for all glyphs) */
     reverseShapes: boolean;
+    /** Kerning pairs table (optional) - maps "char1,char2" to adjustment value */
+    kern?: KerningTable;
     /** Character glyph data - indexed by character */
-    [character: string]: GlyphSpec | boolean;
+    [character: string]: GlyphSpec | boolean | KerningTable | undefined;
 }
 
 /**
