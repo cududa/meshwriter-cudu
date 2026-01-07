@@ -98,12 +98,19 @@ function merge(arrayOfMeshes) {
  * @param {Material} material - Material (unused in this function)
  * @param {string} meshOrigin - "letterCenter" or "fontOrigin"
  * @param {Scene} scene - Babylon scene
+ * @param {Object} [spacingOpts] - Optional spacing options
+ * @param {number} [spacingOpts.letterSpacing=0] - Extra spacing between letters (world units, added after kerning)
+ * @param {number} [spacingOpts.wordSpacing=0] - Extra spacing for spaces (world units, added to space width)
  * @returns {any[] & LetterPolygonsResult} - [meshes, boxes, origins] with xWidth and count properties
  */
 export function constructLetterPolygons(
     letters, fontSpec, xOffset, yOffset, zOffset,
-    letterScale, thickness, material, meshOrigin, scene
+    letterScale, thickness, material, meshOrigin, scene, spacingOpts = {}
 ) {
+    // Extract spacing options (already in world units)
+    const letterSpacing = isNumber(spacingOpts.letterSpacing) ? spacingOpts.letterSpacing : 0;
+    const wordSpacing = isNumber(spacingOpts.wordSpacing) ? spacingOpts.wordSpacing : 0;
+
     let letterOffsetX = 0;
     const lettersOrigins = new Array(letters.length);
     const lettersBoxes = new Array(letters.length);
@@ -134,6 +141,15 @@ export function constructLetterPolygons(
                 if (kernValue !== 0) {
                     newOffsetX += kernValue * letterScale;
                 }
+                // Apply letter spacing after kerning (not after last letter)
+                if (letterSpacing !== 0) {
+                    newOffsetX += letterSpacing;
+                }
+            }
+
+            // Apply extra word spacing for space characters
+            if (letter === ' ' && wordSpacing !== 0) {
+                newOffsetX += wordSpacing;
             }
 
             letterOffsetX = newOffsetX;

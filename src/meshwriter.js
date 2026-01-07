@@ -76,17 +76,23 @@ export function createMeshWriter(scene, preferences = {}) {
         const emissive = setOption(colors, "emissive", isString, basicColor);
         const emissiveOnly = setOption(options, "emissive-only", isBoolean, false);
         const fogEnabled = setOption(options, "fog-enabled", isBoolean, true);
+        const letterSpacingRaw = setOption(options, "letter-spacing", isNumber, 0);
+        const wordSpacingRaw = setOption(options, "word-spacing", isNumber, 0);
         const fontSpec = getFont(fontFamily);
         const letterScale = round(scale * rawheight / naturalLetterHeight);
         const thickness = round(scale * rawThickness);
         const letters = isString(lttrs) ? lttrs : "";
+        // Scale spacing values to match letter scale
+        const letterSpacing = letterSpacingRaw * scale;
+        const wordSpacing = wordSpacingRaw * scale;
 
         // Create material
         const material = makeMaterial(scene, letters, emissive, ambient, specular, diffuse, opac, emissiveOnly, fogEnabled);
 
         // Create letter meshes
         const meshesAndBoxes = constructLetterPolygons(
-            letters, fontSpec, 0, 0, 0, letterScale, thickness, material, meshOrigin, scene
+            letters, fontSpec, 0, 0, 0, letterScale, thickness, material, meshOrigin, scene,
+            { letterSpacing, wordSpacing }
         );
         const meshes = meshesAndBoxes[0];
         const lettersBoxes = meshesAndBoxes[1];

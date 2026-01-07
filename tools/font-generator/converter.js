@@ -283,8 +283,10 @@ export async function convertFont(fontPath, options = {}) {
         const sC = shapes.map(shape => encodeCommandList(shape));
 
         // Encode holes (if any)
+        // Each hole is wrapped in an array to allow for multi-segment holes
+        // letterMesh.js expects: hC = [["encoded"], ["encoded"]] not ["encoded", "encoded"]
         const hC = holes.length > 0
-            ? holes.map(hole => encodeCommandList(hole))
+            ? holes.map(hole => [encodeCommandList(hole)])
             : undefined;
 
         // Get bounding box
@@ -449,6 +451,23 @@ export function generateFontModule(fontSpec, fontName) {
 }
 
 /**
+ * Generate TypeScript declaration file for a font
+ * @param {string} fontName - Name of the font
+ * @returns {string} - TypeScript declaration source
+ */
+export function generateFontDeclaration(fontName) {
+    return `/**
+ * ${fontName} Font for MeshWriter
+ * Auto-generated TypeScript declaration
+ */
+import type { FontSpec } from 'meshwriter';
+
+declare const font: FontSpec;
+export default font;
+`;
+}
+
+/**
  * Escape a character for use as an object key in JavaScript
  */
 function escapeChar(char) {
@@ -479,6 +498,7 @@ function escapeChar(char) {
  * @param {string} inputPath - Path to TTF/OTF file
  * @param {string} outputPath - Path for output JS file
  * @param {object} options - Conversion options
+ * @param {boolean} [options.generateTypes=true] - Whether to generate .d.ts file
  */
 export async function convertFontToModule(inputPath, outputPath, options = {}) {
     const fontSpec = await convertFont(inputPath, options);
@@ -487,6 +507,15 @@ export async function convertFontToModule(inputPath, outputPath, options = {}) {
 
     writeFileSync(outputPath, moduleSource, 'utf-8');
     console.log(`  Output: ${outputPath}`);
+
+    // Generate TypeScript declaration file
+    const generateTypes = options.generateTypes !== false;
+    if (generateTypes) {
+        const dtsPath = outputPath.replace(/\.js$/, '.d.ts');
+        const dtsSource = generateFontDeclaration(fontName);
+        writeFileSync(dtsPath, dtsSource, 'utf-8');
+        console.log(`  Types: ${dtsPath}`);
+    }
 
     return fontSpec;
 }
