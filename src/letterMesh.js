@@ -356,6 +356,23 @@ function punchHolesInShapes(shapesList, holesList, letter, letterIndex, scene) {
     const letterMeshes = [];
     const csgLib = getCSGLib();
 
+    // Handle special case: single shape with multiple hole arrays
+    // (e.g., "B" has 1 shape but 2 holes - top and bottom)
+    // In this case, all holes should be punched into the single shape
+    if (shapesList.length === 1 && holesList.length > 1) {
+        const shape = shapesList[0];
+        // Flatten all hole arrays into a single array
+        const allHoles = holesList.flat();
+
+        if (allHoles.length > 0) {
+            letterMeshes.push(punchHolesInShape(shape, allHoles, letter, letterIndex, csgLib, csgVersion, scene));
+        } else {
+            letterMeshes.push(shape);
+        }
+        return letterMeshes;
+    }
+
+    // Standard case: 1:1 correspondence between shapes and hole arrays
     for (let j = 0; j < shapesList.length; j++) {
         const shape = shapesList[j];
         const holes = holesList[j];
