@@ -59,7 +59,7 @@
     },
     "devDependencies": {
         "@babylonjs/core": "^8.0.0",
-        "@rollup/plugin-commonjs": "^28.0.0",
+        "@rollup/plugin-commonjs": "^29.0.0",
         "@rollup/plugin-node-resolve": "^16.0.0",
         "@rollup/plugin-terser": "^0.4.0",
         "earcut": "^3.0.2",
