@@ -1,7 +1,7 @@
 {
-    "name": "meshwriter",
+    "name": "meshwriter-cudu",
     "version": "3.0.0",
-    "description": "Generate text in BABYLON meshes",
+    "description": "Modern 3D text rendering for Babylon.js with variable font weights and accessibility features",
     "type": "module",
     "main": "./dist/meshwriter.cjs.js",
     "module": "./dist/meshwriter.esm.js",
@@ -33,7 +33,12 @@
         "babylon",
         "meshwriter",
         "3d-text",
-        "webgl"
+        "webgl",
+        "accessibility",
+        "dyslexia",
+        "variable-font",
+        "typescript",
+        "esm"
     ],
     "authors": ["Brian T Button","Cullen Dudas"],
     "license": "MIT",
@@ -65,7 +70,7 @@
         "src"
     ],
     "bugs": {
-        "url": "https://github.com/briantbutton/meshwriter/issues"
+        "url": "https://github.com/cududa/meshwriter-cudu/issues"
     },
-    "homepage": "https://github.com/briantbutton/meshwriter#readme"
+    "homepage": "https://github.com/cududa/meshwriter-cudu#readme"
 }
