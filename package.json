@@ -21,11 +21,12 @@
         "build:types": "tsc",
         "build": "npm run build:rollup && npm run build:types",
         "typecheck": "tsc --noEmit",
-        "dev": "rollup -c -w"
+        "dev": "rollup -c -w",
+        "bake:fonts": "node scripts/bake-fonts.js"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/briantbutton/meshwriter"
+        "url": "https://github.com/cududa/meshwriter-cudu"
     },
     "keywords": [
         "babylonjs",
@@ -34,7 +35,7 @@
         "3d-text",
         "webgl"
     ],
-    "author": "Brian T Button",
+    "authors": ["Brian T Button","Cullen Dudas"],
     "license": "MIT",
     "peerDependencies": {
         "@babylonjs/core": ">=6.0.0",
@@ -54,6 +55,7 @@
         "@rollup/plugin-node-resolve": "^16.0.0",
         "@rollup/plugin-terser": "^0.4.0",
         "earcut": "^3.0.2",
+        "fontkit": "^2.0.4",
         "rollup": "^4.0.0",
         "typescript": "^5.0.0"
     },

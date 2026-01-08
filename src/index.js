@@ -37,6 +37,14 @@ export {
     decodeList
 } from './fontRegistry.js';
 
+// Baked font loader (lightweight, no dependencies)
+export {
+    loadBakedFont,
+    loadBakedFontsFromManifest,
+    findNearestWeight,
+    getBakedFontManifest
+} from './bakedFontLoader.js';
+
 // Utility exports (for advanced usage / font creation)
 export { codeList as encodeFontData, decodeList as decodeFontData } from './fontCompression.js';
 
@@ -80,6 +88,13 @@ import {
 
 import { codeList, decodeList } from './fontCompression.js';
 
+import {
+    loadBakedFont,
+    loadBakedFontsFromManifest,
+    findNearestWeight,
+    getBakedFontManifest
+} from './bakedFontLoader.js';
+
 export const MeshWriter = {
     /**
      * Create MeshWriter async (recommended for Babylon 8+)
@@ -108,7 +123,13 @@ export const MeshWriter = {
 
     // Encoding utilities
     codeList,
-    decodeList
+    decodeList,
+
+    // Baked font methods (lightweight alternative to variable fonts)
+    loadBakedFont,
+    loadBakedFontsFromManifest,
+    findNearestWeight,
+    getBakedFontManifest
 };
 
 // Default export

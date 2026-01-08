@@ -10,7 +10,8 @@ const esmBuild = {
     output: {
         file: 'dist/meshwriter.esm.js',
         format: 'esm',
-        sourcemap: true
+        sourcemap: true,
+        inlineDynamicImports: true
     },
     external: [
         /^@babylonjs\/core/,
@@ -29,7 +30,8 @@ const cjsBuild = {
         file: 'dist/meshwriter.cjs.js',
         format: 'cjs',
         sourcemap: true,
-        exports: 'named'
+        exports: 'named',
+        inlineDynamicImports: true
     },
     external: [
         /^@babylonjs\/core/,
@@ -68,7 +70,8 @@ const umdBuild = {
             format: 'umd',
             name: 'MeshWriter',
             sourcemap: true,
-            globals: babylonGlobals
+            globals: babylonGlobals,
+            inlineDynamicImports: true
         },
         {
             file: 'dist/meshwriter.min.js',
@@ -76,7 +79,8 @@ const umdBuild = {
             name: 'MeshWriter',
             sourcemap: true,
             globals: babylonGlobals,
-            plugins: [terser()]
+            plugins: [terser()],
+            inlineDynamicImports: true
         }
     ],
     external: [

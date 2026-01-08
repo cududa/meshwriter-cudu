@@ -223,6 +223,7 @@ export interface MeshWriterStatic {
 
     /** Manually mark CSG as ready */
     markCSGReady(): void;
+
     /** Initialize the internal CSG module with Babylon helpers */
     initCSGModule(babylon: BabylonCSGNamespace): void;
 
@@ -243,6 +244,18 @@ export interface MeshWriterStatic {
 
     /** Decode compressed string to font coordinates */
     decodeList(encoded: string): number[][];
+
+    /** Load a pre-baked font from a JSON file */
+    loadBakedFont(url: string): Promise<FontSpec>;
+
+    /** Load multiple pre-baked weights from a manifest */
+    loadBakedFontsFromManifest(manifestUrl: string, weights?: number[]): Promise<Map<number, FontSpec>>;
+
+    /** Find the nearest available weight from a set of baked weights */
+    findNearestWeight(targetWeight: number, availableWeights: number[]): number;
+
+    /** Get manifest info without loading fonts */
+    getBakedFontManifest(manifestUrl: string): Promise<BakedFontManifest>;
 }
 
 // ============ Exports ============
@@ -309,6 +322,75 @@ export function decodeFontData(encoded: string): number[][];
 
 /** Initialize the internal CSG module with Babylon helpers */
 export function initCSGModule(babylon: BabylonCSGNamespace): void;
+
+// ============ Baked Font Types ============
+
+/** Manifest for baked font weights */
+export interface BakedFontManifest {
+    /** Full font name */
+    fontName: string;
+    /** Base name used for files */
+    baseName: string;
+    /** Character set included */
+    charset: string;
+    /** Number of characters in charset */
+    charsetLength: number;
+    /** Weight range of original font */
+    weightRange: { min: number; max: number };
+    /** Available baked weights */
+    weights: number[];
+    /** File names for each weight */
+    files: string[];
+    /** ISO timestamp of generation */
+    generatedAt: string;
+}
+
+/**
+ * Load a pre-baked font from a JSON file
+ * Zero dependencies - just fetch and use.
+ *
+ * @param url - URL to the baked FontSpec JSON file
+ * @returns Promise resolving to FontSpec object
+ *
+ * @example
+ * const fontSpec = await loadBakedFont('/fonts/baked/atkinson-400.json');
+ * registerFont('Atkinson400', fontSpec);
+ */
+export function loadBakedFont(url: string): Promise<FontSpec>;
+
+/**
+ * Load multiple pre-baked weights from a manifest
+ *
+ * @param manifestUrl - URL to the manifest.json file
+ * @param weights - Specific weights to load (loads all if omitted)
+ * @returns Promise resolving to Map of weight -> FontSpec
+ *
+ * @example
+ * const fonts = await loadBakedFontsFromManifest('/fonts/baked/manifest.json', [400, 450]);
+ * const fontSpec = fonts.get(400);
+ */
+export function loadBakedFontsFromManifest(manifestUrl: string, weights?: number[]): Promise<Map<number, FontSpec>>;
+
+/**
+ * Find the nearest available weight from a set of baked weights
+ *
+ * @param targetWeight - Desired weight
+ * @param availableWeights - Array of available weights
+ * @returns Nearest available weight
+ *
+ * @example
+ * const nearest = findNearestWeight(425, [400, 450, 500]);
+ * // Returns 450 (closest to 425)
+ */
+export function findNearestWeight(targetWeight: number, availableWeights: number[]): number;
+
+/**
+ * Get manifest info without loading fonts
+ *
+ * @param manifestUrl - URL to the manifest.json file
+ * @returns Promise resolving to manifest object
+ */
+export function getBakedFontManifest(manifestUrl: string): Promise<BakedFontManifest>;
 
 // ============ Material Plugins ============
 
