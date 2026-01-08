@@ -1,6 +1,6 @@
 {
     "name": "meshwriter-cudu",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "description": "Modern 3D text rendering for Babylon.js with variable font weights and accessibility features",
     "type": "module",
     "main": "./dist/meshwriter.cjs.js",
@@ -40,7 +40,10 @@
         "typescript",
         "esm"
     ],
-    "authors": ["Brian T Button","Cullen Dudas"],
+    "authors": [
+        "Brian T Button",
+        "Cullen Dudas"
+    ],
     "license": "MIT",
     "peerDependencies": {
         "@babylonjs/core": ">=6.0.0",
