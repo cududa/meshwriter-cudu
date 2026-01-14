@@ -61,15 +61,17 @@ export function makeMaterial(scene, letters, emissive, ambient, specular, diffus
     // Emissive-only materials should be self-lit and not affected by fog
     if (emissiveOnly) {
         material.fogEnabled = false;
+    } else if (fogEnabled) {
+        // IMPORTANT: Disable Babylon's built-in fog when using TextFogPlugin.
+        // Built-in fog only affects diffuse/ambient, not emissive.
+        // If we left fogEnabled=true, diffuse would be fogged twice (once by Babylon,
+        // once by the plugin), while emissive would only be fogged once by the plugin.
+        // By disabling built-in fog and handling ALL fog in the plugin, we get uniform
+        // fog application to the entire fragment (matching terrain behavior).
+        material.fogEnabled = false;
+        material._textFogPlugin = new TextFogPlugin(material);
     } else {
-        material.fogEnabled = fogEnabled;
-        // Attach fog plugin to properly blend emissive color with fog
-        // Babylon's standard fog only affects diffuse/ambient, not emissive.
-        // The plugin re-fogs the entire fragment output so emissive fades properly.
-        // (The slight double-fog on diffuse/ambient is negligible since text is primarily emissive)
-        if (fogEnabled) {
-            material._textFogPlugin = new TextFogPlugin(material);
-        }
+        material.fogEnabled = false;
     }
 
     return material;
@@ -95,7 +97,8 @@ export function makeFaceMaterial(scene, letters, emissive, opac, fogEnabled = tr
     material.disableLighting = true;
     material.alpha = opac;
     material.backFaceCulling = false;
-    material.fogEnabled = fogEnabled;
+    // Disable Babylon's built-in fog - TextFogPlugin handles all fog uniformly
+    material.fogEnabled = false;
     if (fogEnabled) {
         material._textFogPlugin = new TextFogPlugin(material);
     }
