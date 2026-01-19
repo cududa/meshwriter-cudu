@@ -44,7 +44,12 @@ export class TextFogPlugin extends MaterialPluginBase {
 
     /**
      * Define our own fog uniforms since material.fogEnabled = false
-     * means Babylon's built-in fog uniforms won't be available
+     * means Babylon's built-in fog uniforms won't be available.
+     *
+     * - ubo: Used when Uniform Buffer Objects are enabled (Safari)
+     * - fragment: Used when UBOs are disabled (Chrome) - provides standalone declarations
+     *
+     * Babylon.js chooses between these based on engine capabilities.
      */
     getUniforms() {
         return {
@@ -53,7 +58,10 @@ export class TextFogPlugin extends MaterialPluginBase {
                 { name: 'textFogColor', size: 3, type: 'vec3' }
             ],
             vertex: '',
-            fragment: ''
+            fragment: `
+                uniform vec4 textFogInfos;
+                uniform vec3 textFogColor;
+            `
         };
     }
 
@@ -116,11 +124,12 @@ export class TextFogPlugin extends MaterialPluginBase {
 
         if (shaderType === 'fragment') {
             return {
-                // Declare uniforms and varying in fragment shader
+                // Declare varying in fragment shader
+                // Note: textFogInfos and textFogColor uniforms come from the Material UBO
+                // (defined in getUniforms). Don't redeclare them here - Safari's strict
+                // GLSL compiler rejects duplicate declarations.
                 'CUSTOM_FRAGMENT_DEFINITIONS': `
                     #ifdef MESHWRITER_TEXT_FOG
-                    uniform vec4 textFogInfos;
-                    uniform vec3 textFogColor;
                     varying vec3 textFogDistance;
                     #endif
                 `,
