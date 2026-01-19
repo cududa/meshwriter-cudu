@@ -13,7 +13,8 @@
             "types": "./src/types.d.ts"
         },
         "./fonts/*": "./fonts/*.js",
-        "./fonts": "./fonts/index.js"
+        "./fonts": "./fonts/index.js",
+        "./fonts/baked/*": "./fonts/baked/*"
     },
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",

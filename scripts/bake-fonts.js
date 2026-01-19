@@ -1,6 +1,17 @@
 #!/usr/bin/env node
 /**
- * Bake Variable Fonts Script
+ * @deprecated DO NOT USE - This script produces fonts that cause CSG errors.
+ *
+ * The fontkit library extracts curves differently than opentype.js, producing
+ * higher-resolution subdivided curves with inverted winding that CSG2 cannot
+ * process ("Not manifold" errors).
+ *
+ * Use bake-static-weights.js instead, which uses the converter.js with
+ * opentype.js to produce CSG-compatible fonts from static OTF files.
+ *
+ * ---
+ *
+ * Bake Variable Fonts Script (DEPRECATED)
  *
  * Pre-generates FontSpec JSON files at discrete weights during build time.
  * This eliminates the need for fontkit at runtime.
@@ -8,7 +19,16 @@
  * Usage:
  *   node scripts/bake-fonts.js
  *   node scripts/bake-fonts.js --weights=400,425,450 --font=./fonts/variable/my-font.ttf
+ *
+ * The script includes curve simplification to produce CSG-compatible geometry:
+ * - Coordinates are rounded to integers
+ * - Nearly-collinear curve segments are merged
+ * - Redundant close points are removed
  */
+
+console.error('⚠️  WARNING: This script is deprecated and produces broken fonts.')
+console.error('   Use bake-static-weights.js instead.')
+console.error('')
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, basename, join } from 'path';
@@ -32,6 +52,10 @@ const DEFAULT_FONT_PATH = join(PROJECT_ROOT, 'fonts/variable/atkinson-hyperlegib
 
 // Output directory
 const OUTPUT_DIR = join(PROJECT_ROOT, 'fonts/baked');
+
+// Curve simplification settings
+const SIMPLIFY_TOLERANCE = 1.0;      // Points closer than this are merged
+const COLLINEAR_THRESHOLD = 0.02;    // Threshold for considering segments collinear
 
 /**
  * Parse command line arguments
@@ -62,6 +86,169 @@ function parseArgs() {
 
     return options;
 }
+
+// ============================================================================
+// Curve Simplification
+// ============================================================================
+
+/**
+ * Distance between two points
+ */
+function dist(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Get the endpoint of a command
+ */
+function getEndpoint(cmd) {
+    if (cmd.length === 2) return { x: cmd[0], y: cmd[1] };
+    if (cmd.length === 4) return { x: cmd[2], y: cmd[3] };
+    if (cmd.length === 6) return { x: cmd[4], y: cmd[5] };
+    return null;
+}
+
+/**
+ * Calculate perpendicular distance from point to line segment
+ * Used to determine if curve is nearly straight
+ */
+function perpendicularDistance(px, py, x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 0.0001) return dist(px, py, x1, y1);
+    return Math.abs(dy * px - dx * py + x2 * y1 - y2 * x1) / len;
+}
+
+/**
+ * Check if a quadratic curve is nearly a straight line
+ */
+function isQuadraticNearlyLinear(x0, y0, cx, cy, x1, y1, tolerance) {
+    // Check if control point is close to the line from start to end
+    return perpendicularDistance(cx, cy, x0, y0, x1, y1) < tolerance;
+}
+
+/**
+ * Check if a cubic curve is nearly a straight line
+ */
+function isCubicNearlyLinear(x0, y0, cx1, cy1, cx2, cy2, x1, y1, tolerance) {
+    // Check if both control points are close to the line
+    const d1 = perpendicularDistance(cx1, cy1, x0, y0, x1, y1);
+    const d2 = perpendicularDistance(cx2, cy2, x0, y0, x1, y1);
+    return d1 < tolerance && d2 < tolerance;
+}
+
+/**
+ * Simplify a contour by:
+ * 1. Converting nearly-linear curves to lines
+ * 2. Merging consecutive collinear lines
+ * 3. Removing duplicate/very-close points
+ */
+function simplifyContour(contour, tolerance = SIMPLIFY_TOLERANCE) {
+    if (contour.length < 2) return contour;
+
+    const simplified = [];
+    let prevEndX = null, prevEndY = null;
+
+    for (let i = 0; i < contour.length; i++) {
+        const cmd = contour[i];
+        const startX = prevEndX !== null ? prevEndX : cmd[0];
+        const startY = prevEndY !== null ? prevEndY : cmd[1];
+
+        if (cmd.length === 2) {
+            // Line command - check for duplicate points
+            const [x, y] = cmd;
+            if (prevEndX === null || dist(x, y, prevEndX, prevEndY) > tolerance) {
+                simplified.push([Math.round(x), Math.round(y)]);
+                prevEndX = x;
+                prevEndY = y;
+            }
+        } else if (cmd.length === 4) {
+            // Quadratic curve
+            const [cx, cy, x, y] = cmd;
+            if (isQuadraticNearlyLinear(startX, startY, cx, cy, x, y, tolerance * 5)) {
+                // Convert to line
+                if (dist(x, y, prevEndX ?? startX, prevEndY ?? startY) > tolerance) {
+                    simplified.push([Math.round(x), Math.round(y)]);
+                }
+            } else {
+                // Keep as curve with rounded coordinates
+                simplified.push([
+                    Math.round(cx), Math.round(cy),
+                    Math.round(x), Math.round(y)
+                ]);
+            }
+            prevEndX = x;
+            prevEndY = y;
+        } else if (cmd.length === 6) {
+            // Cubic curve
+            const [cx1, cy1, cx2, cy2, x, y] = cmd;
+            if (isCubicNearlyLinear(startX, startY, cx1, cy1, cx2, cy2, x, y, tolerance * 5)) {
+                // Convert to line
+                if (dist(x, y, prevEndX ?? startX, prevEndY ?? startY) > tolerance) {
+                    simplified.push([Math.round(x), Math.round(y)]);
+                }
+            } else {
+                // Keep as curve with rounded coordinates
+                simplified.push([
+                    Math.round(cx1), Math.round(cy1),
+                    Math.round(cx2), Math.round(cy2),
+                    Math.round(x), Math.round(y)
+                ]);
+            }
+            prevEndX = x;
+            prevEndY = y;
+        }
+    }
+
+    // Merge consecutive collinear lines
+    return mergeCollinearLines(simplified);
+}
+
+/**
+ * Merge consecutive collinear line segments
+ */
+function mergeCollinearLines(contour) {
+    if (contour.length < 3) return contour;
+
+    const merged = [contour[0]];
+
+    for (let i = 1; i < contour.length; i++) {
+        const prev = merged[merged.length - 1];
+        const curr = contour[i];
+
+        // Only merge if both are lines (length 2)
+        if (prev.length === 2 && curr.length === 2 && merged.length >= 2) {
+            const prevPrev = merged[merged.length - 2];
+            const prevPrevEnd = getEndpoint(prevPrev);
+
+            if (prevPrevEnd) {
+                // Check if prev and curr are collinear with the line from prevPrevEnd to curr
+                const d = perpendicularDistance(
+                    prev[0], prev[1],
+                    prevPrevEnd.x, prevPrevEnd.y,
+                    curr[0], curr[1]
+                );
+
+                if (d < COLLINEAR_THRESHOLD) {
+                    // Replace prev with curr (skip the middle point)
+                    merged[merged.length - 1] = curr;
+                    continue;
+                }
+            }
+        }
+
+        merged.push(curr);
+    }
+
+    return merged;
+}
+
+// ============================================================================
+// Glyph Conversion
+// ============================================================================
 
 /**
  * Convert fontkit glyph to MeshWriter GlyphSpec
@@ -177,11 +364,18 @@ function convertPath(path, scale) {
 
     for (const contour of contours) {
         if (contour.length < 2) continue;
-        const winding = calculateWinding(contour);
-        if (winding < 0) {
-            shapes.push(contour);
+
+        // Apply curve simplification to reduce command count
+        const simplified = simplifyContour(contour);
+        if (simplified.length < 2) continue;
+
+        const winding = calculateWinding(simplified);
+        // Positive winding = outer contour (shape), negative = inner (hole)
+        // This matches the reverseHoles/reverseShapes flags we set
+        if (winding > 0) {
+            shapes.push(simplified);
         } else {
-            holes.push(contour);
+            holes.push(simplified);
         }
     }
 
@@ -283,8 +477,8 @@ function generateFontSpec(baseFont, weight, charset) {
     const isCFF = baseFont.CFF || baseFont.CFF2;
 
     const fontSpec = {
-        reverseHoles: !!isCFF,
-        reverseShapes: !isCFF,
+        reverseHoles: !isCFF,   // Inverted: TrueType fonts need true
+        reverseShapes: !!isCFF, // Inverted: TrueType fonts need false
         kern: {},
         _bakedWeight: weight,
         _bakedAt: new Date().toISOString()
